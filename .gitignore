@@ -33,3 +33,6 @@
 
 # Stack usage
 *.su
+
+# Directories
+Debug/
