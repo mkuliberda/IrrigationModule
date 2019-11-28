@@ -1,2 +1,0 @@
-gpio.c:77:6:MX_GPIO_Init	80	static
-gpio.c:185:6:LEDToggle	0	static

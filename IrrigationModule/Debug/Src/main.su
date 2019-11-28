@@ -1,4 +1,0 @@
-main.cpp:81:6:void vLEDFlashTask(void*)	24	static
-main.cpp:95:5:int main()	8	static
-main.cpp:152:6:void SystemClock_Config()	128	static
-main.cpp:218:6:void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef*)	16	static
