@@ -138,6 +138,7 @@
 #define MEMS_INT2_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
+#define TASK_FREQ_MULTIPLIER 1000
 
 /* USER CODE END Private defines */
 

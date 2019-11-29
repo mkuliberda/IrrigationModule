@@ -81,12 +81,12 @@ void MX_FREERTOS_Init(void);
 void vLEDFlashTask( void *pvParameters )
 {
   portTickType xLastWakeTime;
-  const portTickType xFrequency = 1000;
+  const portTickType xFrequencyHz = 1 * TASK_FREQ_MULTIPLIER;
   xLastWakeTime=xTaskGetTickCount();
     for( ;; )
     {
       LEDToggle(5);
-      vTaskDelayUntil(&xLastWakeTime,xFrequency);
+      vTaskDelayUntil(&xLastWakeTime,xFrequencyHz);
     }
 }
 
@@ -128,6 +128,8 @@ int main(void)
 
   /* Call init function for freertos objects (in freertos.c) */
   MX_FREERTOS_Init();
+  xTaskCreate( vLEDFlashTask, ( const char * ) "LED", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
+
 
   /* Start scheduler */
   osKernelStart();
