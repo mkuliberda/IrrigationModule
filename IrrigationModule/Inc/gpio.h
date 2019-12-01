@@ -63,6 +63,7 @@
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
+#define DEBOUNCECOUNTS 1000
 
 /* USER CODE END Private defines */
 

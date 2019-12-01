@@ -55,7 +55,7 @@
 #include "usart.h"
 #include "gpio.h"
 #include "freertoss.h"
-#include <PumpController.h>
+#include <freeRTOSTasks.h>
 
 /* USER CODE BEGIN Includes */
 
@@ -78,17 +78,6 @@ void MX_FREERTOS_Init(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-void vLEDFlashTask( void *pvParameters )
-{
-  portTickType xLastWakeTime;
-  const portTickType xFrequencyHz = 1 * TASK_FREQ_MULTIPLIER;
-  xLastWakeTime=xTaskGetTickCount();
-    for( ;; )
-    {
-      LEDToggle(5);
-      vTaskDelayUntil(&xLastWakeTime,xFrequencyHz);
-    }
-}
 
 /* USER CODE END 0 */
 
