@@ -5,40 +5,114 @@
 
 
 
-bool Pump::isRunning(void){
-	return this->_running;
-}
-
-void Pump::turnON(void){
+void Pump::start(void){
 	//TODO: add timing restrictions
-	this->_running = true;
+	if(this->idletimeGet() > this->idletimeRequiredSeconds){
+		this->stateSet(state_t::running);
+		this->idletimeReset();
+	}
+	else{
+		this->stateSet(state_t::waiting);
+	}
 }
 
-void Pump::turnOFF(void){
-		this->_running = false;
+void Pump::stop(void){
+
+	if(this->stateGet() == state_t::running || this->stateGet() == state_t::init){
+		this->stateSet(state_t::stopped);
+		this->runtimeReset();
+	}
 }
 
-uint32_t Pump::incrementRunningTime(void){
-	return this->runningTimeSeconds++;
+Pump::state_t Pump::stateGet(void){
+	return this->state;
 }
 
-void Pump::resetRunningTime(void){
-	this->runningTimeSeconds = 0;
+void Pump::stateSet(state_t state){
+	this->state = state;
 }
 
-uint32_t Pump::getTimeFromLastRun(void){
-	return this->timeFromLastRunSeconds;
+bool Pump::isRunning(void){
+	return stateGet() == state_t::running ? true : false;
+}
+
+void Pump::step(double dt){
+
+	if(this->isRunning() == true){
+		this->runtimeIncrease(dt);
+	}
+	else{
+		this->runtimeReset();
+		this->idletimeIncrease(dt);
+	}
+}
+
+void Pump::runtimeReset(void){
+	this->runtimeSeconds = 0.0;
+}
+
+void Pump::runtimeIncrease(double dt){
+	this->runtimeSeconds += dt;
+}
+
+double Pump::runtimeGet(void){
+	return this->runtimeSeconds;
+}
+
+void Pump::idletimeReset(void){
+	this->idletimeSeconds = 0.0;
+}
+
+void Pump::idletimeIncrease(double dt){
+	this->idletimeSeconds += dt;
+}
+
+double Pump::idletimeGet(void){
+	return this->idletimeSeconds;
+}
+
+string Pump::descriptionGet(void){
+	return this->description;
 }
 
 
+bool Controller::run(void){
 
 
-bool Tank::setTemperature(double temp){
+	string name = p1->descriptionGet();
+	//p2->incrementRunningTime();
+	//p3->incrementRunningTime();
 
-	bool success = true;
-	this->temperature = temp;
+	return true;
+}
 
-	if(temp < 0.0){
+
+bool Tank::temperatureSet(double temperature){
+
+	this->temperature = temperature;
+
+	if(temperature < 0.0){
+		this->_isOK = false;
+		this->stateSet(state_t::frozen);
+	}
+	else{
+		this->_isOK = true;
+		this->stateSet(state_t::liquid);
+	}
+
+	return this->_isOK;
+}
+
+double Tank::temperatureGet(void){
+	return this->temperature;
+}
+
+bool Tank::waterlevelSet(uint8_t waterlevel){
+
+	this->waterlevel = waterlevel;
+	//todo: constrain to 0-100
+
+	if (this->waterlevel < 10){
 		this->_isOK = false;
 	}
 	else this->_isOK = true;
@@ -46,27 +120,17 @@ bool Tank::setTemperature(double temp){
 	return this->_isOK;
 }
 
-double Tank::getTemperature(void){
-	return this->temperature;
-}
-
-bool Tank::setWaterLevel(uint8_t water_lvl){
-
-	bool success = true;
-	this->waterLevel = water_lvl;
-
-	if (water_lvl < 10){
-		this->_isOK = false;
-	}
-	else this->_isOK = true;
-
-	return success;
-}
-
-uint8_t Tank::getWaterLevel(void){
-	return this->waterLevel;
+uint8_t Tank::waterlevelGet(void){
+	return this->waterlevel;
 }
 
 bool Tank::checkStateOK(void){
 	return this->_isOK;
+}
+
+Tank::state_t Tank::stateGet(void){
+	return this->state;
+}
+void Tank::stateSet(state_t state){
+	this->state = state;
 }
