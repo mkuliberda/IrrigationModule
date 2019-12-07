@@ -74,8 +74,26 @@
 #define OSC_IN_GPIO_Port GPIOF
 #define OSC_OUT_Pin GPIO_PIN_1
 #define OSC_OUT_GPIO_Port GPIOF
+#define SOIL_SENSOR4_Pin GPIO_PIN_0
+#define SOIL_SENSOR4_GPIO_Port GPIOC
+#define SOIL_SENSOR5_Pin GPIO_PIN_1
+#define SOIL_SENSOR5_GPIO_Port GPIOC
+#define SOIL_SENSOR6_Pin GPIO_PIN_2
+#define SOIL_SENSOR6_GPIO_Port GPIOC
+#define SOIL_SENSOR7_Pin GPIO_PIN_3
+#define SOIL_SENSOR7_GPIO_Port GPIOC
+#define SOIL_SENSOR8_Pin GPIO_PIN_2
+#define SOIL_SENSOR8_GPIO_Port GPIOF
 #define B1_Pin GPIO_PIN_0
 #define B1_GPIO_Port GPIOA
+#define BAT_VOLTAGE_Pin GPIO_PIN_1
+#define BAT_VOLTAGE_GPIO_Port GPIOA
+#define SOIL_SENSOR1_Pin GPIO_PIN_2
+#define SOIL_SENSOR1_GPIO_Port GPIOA
+#define SOIL_SENSOR2_Pin GPIO_PIN_3
+#define SOIL_SENSOR2_GPIO_Port GPIOA
+#define SOIL_SENSOR3_Pin GPIO_PIN_4
+#define SOIL_SENSOR3_GPIO_Port GPIOF
 #define SPI1_SCK_Pin GPIO_PIN_5
 #define SPI1_SCK_GPIO_Port GPIOA
 #define SPI1_MISO_Pin GPIO_PIN_6
@@ -108,16 +126,20 @@
 #define NRF24_MISO_GPIO_Port GPIOB
 #define NRF24_MOSI_Pin GPIO_PIN_15
 #define NRF24_MOSI_GPIO_Port GPIOB
-#define MOTOR1_Pin GPIO_PIN_10
-#define MOTOR1_GPIO_Port GPIOD
-#define MOTOR2_Pin GPIO_PIN_11
-#define MOTOR2_GPIO_Port GPIOD
-#define MOTOR3_Pin GPIO_PIN_12
-#define MOTOR3_GPIO_Port GPIOD
-#define WATER_LVL_H_Pin GPIO_PIN_6
-#define WATER_LVL_H_GPIO_Port GPIOC
-#define WATER_LVL_L_Pin GPIO_PIN_7
-#define WATER_LVL_L_GPIO_Port GPIOC
+#define PUMP1_Pin GPIO_PIN_10
+#define PUMP1_GPIO_Port GPIOD
+#define PUMP2_Pin GPIO_PIN_11
+#define PUMP2_GPIO_Port GPIOD
+#define PUMP3_Pin GPIO_PIN_12
+#define PUMP3_GPIO_Port GPIOD
+#define PUMP4_Pin GPIO_PIN_13
+#define PUMP4_GPIO_Port GPIOD
+#define T1_WATER_LVL_H_Pin GPIO_PIN_6
+#define T1_WATER_LVL_H_GPIO_Port GPIOC
+#define T1_WATER_LVL_L_Pin GPIO_PIN_7
+#define T1_WATER_LVL_L_GPIO_Port GPIOC
+#define ONEWIRE_Pin GPIO_PIN_8
+#define ONEWIRE_GPIO_Port GPIOC
 #define DM_Pin GPIO_PIN_11
 #define DM_GPIO_Port GPIOA
 #define DP_Pin GPIO_PIN_12
@@ -140,6 +162,10 @@
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
+
+//void _Error_Handler(char *, int);
+
+//#define Error_Handler() _Error_Handler(__FILE__, __LINE__)
 
 /**
   * @}

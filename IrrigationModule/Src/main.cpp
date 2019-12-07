@@ -52,10 +52,11 @@
 #include "adc.h"
 #include "dma.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 #include "freertoss.h"
-#include <freeRTOSTasks.h>
+#include "freeRTOSTasks.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -110,6 +111,7 @@ int main(void)
   MX_ADC1_Init();
   MX_UART4_Init();
   MX_SPI2_Init();
+  MX_TIM7_Init();
 
   /* USER CODE BEGIN 2 */
 
@@ -219,6 +221,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 /* USER CODE END Callback 1 */
 }
 
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @param  None
+  * @retval None
+  */
+//void _Error_Handler(char * file, int line)
+//{
+//  /* USER CODE BEGIN Error_Handler_Debug */
+//  /* User can add his own implementation to report the HAL error return state */
+//  while(1)
+//  {
+//  }
+//  /* USER CODE END Error_Handler_Debug */
+//}
 
 #ifdef USE_FULL_ASSERT
 

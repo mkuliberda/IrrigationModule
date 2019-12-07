@@ -46,6 +46,7 @@
 /* Exported functions ------------------------------------------------------- */
 
 void SysTick_Handler(void);
+void DMA1_Channel1_IRQHandler(void);
 void TIM6_DAC_IRQHandler(void);
 void DMA2_Channel5_IRQHandler(void);
 
