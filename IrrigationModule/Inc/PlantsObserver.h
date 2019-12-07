@@ -13,11 +13,17 @@
 using namespace std;
 
 class Plant{
-	Plant(string p_name){this->name = p_name;};
-	~Plant();
 
 public:
-	bool setMoisture(uint8_t p_moisture);
+
+	Plant(string name):
+	name(name),
+	moisture(0)
+	{};
+
+	~Plant();
+
+	void setMoisture(uint8_t _moisture);
 	uint8_t getMoisture(void);
 	string getName(void);
 

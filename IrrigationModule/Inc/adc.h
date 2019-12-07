@@ -72,6 +72,7 @@ extern void _Error_Handler(char *, int);
 void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+void ADC1_ReadAll(void);
 
 /* USER CODE END Prototypes */
 

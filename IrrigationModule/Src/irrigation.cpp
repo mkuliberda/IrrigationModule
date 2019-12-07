@@ -1,8 +1,7 @@
 
 
 
-#include <IrrigationController.h>
-
+#include <irrigation.h>
 
 
 void Pump::start(void){
@@ -10,6 +9,7 @@ void Pump::start(void){
 	if(this->idletimeGet() > this->idletimeRequiredSeconds){
 		this->stateSet(state_t::running);
 		this->idletimeReset();
+
 	}
 	else{
 		this->stateSet(state_t::waiting);
@@ -75,21 +75,9 @@ string Pump::descriptionGet(void){
 	return this->description;
 }
 
+double Tank::temperatureGet(void){
 
-bool Controller::run(void){
-
-
-	string name = p1->descriptionGet();
-	//p2->incrementRunningTime();
-	//p3->incrementRunningTime();
-
-	return true;
-}
-
-
-bool Tank::temperatureSet(double temperature){
-
-	this->temperature = temperature;
+	//this->temperature = ADC read and calculate temperature function
 
 	if(temperature < 0.0){
 		this->_isOK = false;
@@ -100,10 +88,6 @@ bool Tank::temperatureSet(double temperature){
 		this->stateSet(state_t::liquid);
 	}
 
-	return this->_isOK;
-}
-
-double Tank::temperatureGet(void){
 	return this->temperature;
 }
 
@@ -134,3 +118,32 @@ Tank::state_t Tank::stateGet(void){
 void Tank::stateSet(state_t state){
 	this->state = state;
 }
+
+const uint8_t Tank::waterlevelsAmountGet(void){
+	return this->levels_amount;
+}
+
+
+
+void waterlevelSensor::stateSet(state_t state){
+	this->state = state;
+}
+
+const uint8_t waterlevelSensor::mountpositionGet(void){
+	return this->mount_position; //max <100
+}
+
+bool waterlevelSensor::isValid(void){
+	return this->state != state_t::unknown ? true : false;
+}
+
+bool waterlevelSensor::isWet(void){
+	return this->state == state_t::wet ? true : false;
+}
+
+
+
+//void Controller::run(void){
+//
+//}
+

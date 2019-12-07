@@ -17,12 +17,10 @@
 
 
 void vLEDFlashTask( void *pvParameters );
-void vPlantsCheckTask( void *pvParameters );
-void vTankCheckTask( void *pvParameters );
+void vUserButtonCheckTask( void *pvParameters );
 void vIrrigationControlTask( void *pvParameters );
 void vStatusNotifyTask( void *pvParameters );
-void vUserButtonCheckTask( void *pvParameters );
-void vCommandsGetTask( void *pvParameters );
+void vWirelessCommTask( void *pvParameters );
 
 
 

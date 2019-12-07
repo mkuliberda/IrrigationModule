@@ -47,9 +47,20 @@
   ******************************************************************************
   */
 
+    /**ADC1 GPIO Configuration
+    PC0     ------> ADC1_IN6	-> Soil sensor 2
+    PC1     ------> ADC1_IN7	-> Soil sensor 3
+    PC2     ------> ADC1_IN8	-> Soil sensor 4
+    PC3     ------> ADC1_IN9	-> Soil sensor 5
+    PF2     ------> ADC1_IN10	-> Soil sensor 6
+    PA1     ------> ADC1_IN2	-> Tank temperature
+    PA2     ------> ADC1_IN3	-> Power supply voltage
+    PA3     ------> ADC1_IN4	-> FREE
+    PF4     ------> ADC1_IN5	-> Soil sensor 1
+    */
+
 /* Includes ------------------------------------------------------------------*/
 #include "adc.h"
-
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
@@ -187,6 +198,16 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 } 
 
 /* USER CODE BEGIN 1 */
+void ADC1_ReadAll(void)
+{
+//	HAL_ADC_Start(&hadc1);
+//
+//	if(HAL_ADC_PollForConversion(&hadc1,200) == HAL_OK)
+//	{
+//		HAL_ADC_GetValue(&hadc1);
+//	}
+
+}
 
 /* USER CODE END 1 */
 

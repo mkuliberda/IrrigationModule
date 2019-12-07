@@ -6,14 +6,12 @@
  */
 
 #include <freeRTOSTasks.h>
+#include <irrigation.h>
 #include "gpio.h"
+#include "main.h"
 
 SemaphoreHandle_t xUserButtonSemaphore = NULL;
-SemaphoreHandle_t xTankValidSemaphore = NULL;
-SemaphoreHandle_t xPump1RunSemaphore = NULL;
-SemaphoreHandle_t xPump2RunSemaphore = NULL;
-SemaphoreHandle_t xPump3RunSemaphore = NULL;
-SemaphoreHandle_t xTankOKSemaphore = NULL;
+
 
 void vLEDFlashTask( void *pvParameters )
 {
@@ -42,37 +40,19 @@ void vUserButtonCheckTask(void *pvParameters )
     }
 }
 
-void vPlantsCheckTask( void *pvParameters )
-{
-	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 360 * TASK_FREQ_MULTIPLIER; //<1h
-	xLastWakeTime=xTaskGetTickCount();
-
-    for( ;; )
-    {
-      vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
-    }
-
-}
-
-void vTankCheckTask( void *pvParameters )
-{
-	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 10 * TASK_FREQ_MULTIPLIER; //<0.1Hz
-	xLastWakeTime=xTaskGetTickCount();
-
-    for( ;; )
-    {
-      vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
-    }
-
-}
 
 void vIrrigationControlTask( void *pvParameters )
 {
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
+
+	Pump *pump1 = new Pump("Kroton i Monstera", 2, 10, GPIOD, GPIO_PIN_10);
+	//Pump *pump2 = new Pump("Palma", 2, 10, MOTOR2_GPIO_Port, MOTOR2_GPIO_Pin);
+	//Pump *pump3 = new Pump("Bluszcz, pelargonie i zonkile", 2, 15, MOTOR3_GPIO_Port, MOTOR3_GPIO_Pin);
+
+	Tank *tank1 = new Tank(SENSORSAMOUNT_TANK1);
+
 
     for( ;; )
     {
@@ -92,7 +72,7 @@ void vStatusNotifyTask( void *pvParameters )
     }
 
 }
-void vCommandsGetTask( void *pvParameters )
+void vWirelessCommTask( void *pvParameters )
 {
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
@@ -104,5 +84,6 @@ void vCommandsGetTask( void *pvParameters )
     }
 
 }
+
 
 
