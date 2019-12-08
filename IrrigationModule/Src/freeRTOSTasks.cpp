@@ -5,8 +5,14 @@
  *      Author: Mati
  */
 
+/*Pelargonie co drugi dzieñ
+ * Surfinie codziennie
+ * Trawa raz na 3 dni
+ */
+
 #include <freeRTOSTasks.h>
 #include <irrigation.h>
+#include <plants.h>
 #include "gpio.h"
 #include "main.h"
 
@@ -47,17 +53,26 @@ void vIrrigationControlTask( void *pvParameters )
 	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
 
-	Pump *pump1 = new Pump("Kroton i Monstera", 2, 10, GPIOD, GPIO_PIN_10);
-	//Pump *pump2 = new Pump("Palma", 2, 10, MOTOR2_GPIO_Port, MOTOR2_GPIO_Pin);
-	//Pump *pump3 = new Pump("Bluszcz, pelargonie i zonkile", 2, 15, MOTOR3_GPIO_Port, MOTOR3_GPIO_Pin);
+	GenericPump *pump1 = new GenericPump("Surfinie", 2, 10, PUMP1_GPIO_Port, PUMP1_Pin);
+	GenericPump *pump2 = new GenericPump("Trawa", 2, 10, PUMP2_GPIO_Port, PUMP2_Pin);
+	GenericPump *pump3 = new GenericPump("Pelargonie", 2, 15, PUMP3_GPIO_Port, PUMP3_Pin);
 
-	Tank *tank1 = new Tank(SENSORSAMOUNT_TANK1);
+	WaterTank *tank1 = new WaterTank(SENSORSAMOUNT_TANK1);
+
+	Plant *plant1 = new Plant("Pelargonia");
+	Plant *plant2 = new Plant("Surfinia");
+	Plant *plant3 = new Plant("Trawa");
+
 
 
     for( ;; )
     {
       vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
+
+    delete pump1; delete pump2; delete pump3;
+    delete tank1;
+    delete plant1; delete plant2; delete plant3;
 
 }
 void vStatusNotifyTask( void *pvParameters )

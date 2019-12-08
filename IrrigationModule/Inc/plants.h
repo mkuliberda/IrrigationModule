@@ -5,8 +5,8 @@
  *      Author: Mati
  */
 
-#ifndef PLANTSOBSERVER_H_
-#define PLANTSOBSERVER_H_
+#ifndef PLANTS_H_
+#define PLANTS_H_
 
 #include <string>
 
@@ -23,9 +23,9 @@ public:
 
 	~Plant();
 
-	void setMoisture(uint8_t _moisture);
-	uint8_t getMoisture(void);
-	string getName(void);
+	void moistureSetPercent(uint8_t _moisture);
+	uint8_t moistureGetPercent(void);
+	string nameGet(void);
 
 private:
 	string name;
@@ -33,4 +33,4 @@ private:
 };
 
 
-#endif /* PLANTSOBSERVER_H_ */
+#endif /* PLANTS_H_ */

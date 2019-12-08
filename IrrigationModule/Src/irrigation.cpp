@@ -4,19 +4,18 @@
 #include <irrigation.h>
 
 
-void Pump::start(void){
+void GenericPump::start(void){
 	//TODO: add timing restrictions
-	if(this->idletimeGet() > this->idletimeRequiredSeconds){
+	if(this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
 		this->stateSet(state_t::running);
 		this->idletimeReset();
-
 	}
 	else{
 		this->stateSet(state_t::waiting);
 	}
 }
 
-void Pump::stop(void){
+void GenericPump::stop(void){
 
 	if(this->stateGet() == state_t::running || this->stateGet() == state_t::init){
 		this->stateSet(state_t::stopped);
@@ -24,21 +23,22 @@ void Pump::stop(void){
 	}
 }
 
-Pump::state_t Pump::stateGet(void){
+GenericPump::state_t GenericPump::stateGet(void){
 	return this->state;
 }
 
-void Pump::stateSet(state_t state){
+void GenericPump::stateSet(state_t state){
 	this->state = state;
 }
 
-bool Pump::isRunning(void){
+bool GenericPump::isRunning(void){
 	return stateGet() == state_t::running ? true : false;
 }
 
-void Pump::step(double dt){
+void GenericPump::step(double dt){
 
 	if(this->isRunning() == true){
+		this->idletimeReset();
 		this->runtimeIncrease(dt);
 	}
 	else{
@@ -47,35 +47,37 @@ void Pump::step(double dt){
 	}
 }
 
-void Pump::runtimeReset(void){
+void GenericPump::runtimeReset(void){
 	this->runtimeSeconds = 0.0;
 }
 
-void Pump::runtimeIncrease(double dt){
+void GenericPump::runtimeIncrease(double dt){
 	this->runtimeSeconds += dt;
 }
 
-double Pump::runtimeGet(void){
+double GenericPump::runtimeGetSeconds(void){
 	return this->runtimeSeconds;
 }
 
-void Pump::idletimeReset(void){
+void GenericPump::idletimeReset(void){
 	this->idletimeSeconds = 0.0;
 }
 
-void Pump::idletimeIncrease(double dt){
+void GenericPump::idletimeIncrease(double dt){
 	this->idletimeSeconds += dt;
 }
 
-double Pump::idletimeGet(void){
+double GenericPump::idletimeGetSeconds(void){
 	return this->idletimeSeconds;
 }
 
-string Pump::descriptionGet(void){
+string GenericPump::descriptionGet(void){
 	return this->description;
 }
 
-double Tank::temperatureGet(void){
+
+
+double WaterTank::temperatureGet(void){
 
 	//this->temperature = ADC read and calculate temperature function
 
@@ -91,7 +93,7 @@ double Tank::temperatureGet(void){
 	return this->temperature;
 }
 
-bool Tank::waterlevelSet(uint8_t waterlevel){
+bool WaterTank::waterlevelSet(uint8_t waterlevel){
 
 	this->waterlevel = waterlevel;
 	//todo: constrain to 0-100
@@ -104,43 +106,55 @@ bool Tank::waterlevelSet(uint8_t waterlevel){
 	return this->_isOK;
 }
 
-uint8_t Tank::waterlevelGet(void){
+uint8_t WaterTank::waterlevelGet(void){
 	return this->waterlevel;
 }
 
-bool Tank::checkStateOK(void){
+bool WaterTank::checkStateOK(void){
 	return this->_isOK;
 }
 
-Tank::state_t Tank::stateGet(void){
+WaterTank::state_t WaterTank::stateGet(void){
 	return this->state;
 }
-void Tank::stateSet(state_t state){
+void WaterTank::stateSet(state_t state){
 	this->state = state;
 }
 
-const uint8_t Tank::waterlevelsAmountGet(void){
+const uint8_t WaterTank::waterlevelsAmountGet(void){
 	return this->levels_amount;
 }
 
 
 
-void waterlevelSensor::stateSet(state_t state){
+void OpticalWaterLevelSensor::stateSet(state_t state){
 	this->state = state;
 }
 
-const uint8_t waterlevelSensor::mountpositionGet(void){
+const uint8_t OpticalWaterLevelSensor::mountpositionGet(void){
 	return this->mount_position; //max <100
 }
 
-bool waterlevelSensor::isValid(void){
+bool OpticalWaterLevelSensor::isValid(void){
 	return this->state != state_t::unknown ? true : false;
 }
 
-bool waterlevelSensor::isWet(void){
+bool OpticalWaterLevelSensor::isWet(void){
 	return this->state == state_t::wet ? true : false;
 }
 
+
+
+
+template <typename T> void GenericMoistureSensor::rawreadingSet(T _moisture_reading_raw){
+	this->moisture_reading_raw = _moisture_reading_raw;
+}
+
+
+uint8_t AnalogMoistureSensor::moistureCalculatePercent(void){
+	this->moisture_percent = this->moisture_reading_raw;
+	return this->moisture_percent;
+}
 
 
 //void Controller::run(void){

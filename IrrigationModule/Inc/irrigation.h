@@ -17,9 +17,15 @@
 #define MOUNTPOSITION_SENSOR2 	10
 #define SENSORSAMOUNT_TANK1		2
 
+struct gpio_t{
+	GPIO_TypeDef* port;
+	uint16_t pin;
+};
+
+
 using namespace std;
 
-class Pump{
+class GenericPump{
 
 private:
 
@@ -28,11 +34,6 @@ private:
 		running 	= (uint8_t) 1,
 		stopped 	= (uint8_t) 2,
 		waiting		= (uint8_t) 3
-	};
-
-	struct gpio_t{
-		GPIO_TypeDef* port;
-		uint16_t pin;
 	};
 
 
@@ -47,15 +48,15 @@ private:
 	void 	stateSet(state_t st);
 	void 	runtimeReset(void);
 	void 	runtimeIncrease(double dt);
-	double 	runtimeGet(void);
+	double 	runtimeGetSeconds(void);
 	void 	idletimeReset(void);
 	void 	idletimeIncrease(double dt);
-	double 	idletimeGet(void);
+	double 	idletimeGetSeconds(void);
 
 
 public:
 
-	Pump(string description, const uint32_t idletimeRequiredSeconds, const uint32_t runtimeLimitSeconds, GPIO_TypeDef* GPIOx, uint16_t pin):
+	GenericPump(string description, const uint32_t idletimeRequiredSeconds, const uint32_t runtimeLimitSeconds, GPIO_TypeDef* GPIOx, uint16_t pin):
 	runtimeSeconds(0.0),
 	idletimeSeconds(0.0),
 	runtimeLimitSeconds(runtimeLimitSeconds),
@@ -68,7 +69,7 @@ public:
 		this->stop();
 	};
 
-	~Pump();
+	~GenericPump();
 
 	void start(void);
 	void stop(void);
@@ -79,7 +80,7 @@ public:
 
 };
 
-class waterlevelSensor{
+class OpticalWaterLevelSensor{
 
 private:
 
@@ -94,12 +95,12 @@ private:
 
 public:
 
-	waterlevelSensor(const uint8_t position_percent):
+	OpticalWaterLevelSensor(const uint8_t position_percent):
 		mount_position(position_percent),
 		state(state_t::unknown)
 		{};
 
-	~waterlevelSensor();
+	~OpticalWaterLevelSensor();
 
 	void stateSet(state_t state);
 	const uint8_t mountpositionGet(void);
@@ -109,7 +110,7 @@ public:
 };
 
 
-class Tank{
+class WaterTank{
 
 private:
 
@@ -127,13 +128,13 @@ private:
 
 	void stateSet(state_t state);
 
-	waterlevelSensor *sensorTop = new waterlevelSensor(MOUNTPOSITION_SENSOR1);
-	waterlevelSensor *sensorBottom = new waterlevelSensor(MOUNTPOSITION_SENSOR2);
+	OpticalWaterLevelSensor *sensorTop = new OpticalWaterLevelSensor(MOUNTPOSITION_SENSOR1);
+	OpticalWaterLevelSensor *sensorBottom = new OpticalWaterLevelSensor(MOUNTPOSITION_SENSOR2);
 
 
 public:
 
-	Tank(const uint8_t levels_amount):
+	WaterTank(const uint8_t levels_amount):
 		temperature(0.0),
 		waterlevel(0),
 		_isOK(false),
@@ -141,7 +142,7 @@ public:
 		levels_amount(levels_amount)
 	{};
 
-	~Tank()
+	~WaterTank()
 	{
 		delete sensorTop;
 		delete sensorBottom;
@@ -155,6 +156,43 @@ public:
 	const uint8_t waterlevelsAmountGet(void);
 
 };
+
+
+
+class GenericMoistureSensor{
+
+public:
+
+	GenericMoistureSensor():
+	moisture_reading_raw(0)
+	{};
+
+	~GenericMoistureSensor();
+
+	virtual uint8_t moistureCalculatePercent(void);
+	template <typename T> void rawreadingSet(T _moisture_reading_raw);
+
+	uint32_t moisture_reading_raw;
+};
+
+
+
+class AnalogMoistureSensor: GenericMoistureSensor{
+
+public:
+
+	AnalogMoistureSensor():
+	moisture_percent(0)
+	{};
+
+	~AnalogMoistureSensor();
+
+	uint8_t moistureCalculatePercent(void);
+
+private:
+	uint8_t moisture_percent;
+};
+
 
 //class Controller{
 //
