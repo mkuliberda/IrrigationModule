@@ -120,6 +120,7 @@ int main(void)
   /* Call init function for freertos objects (in freertos.c) */
   MX_FREERTOS_Init();
   xTaskCreate( vLEDFlashTask, ( const char * ) "LED", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
+  xTaskCreate( vIrrigationControlTask, ( const char * ) "Irrigation Control", configMINIMAL_STACK_SIZE+128, NULL, tskIDLE_PRIORITY, NULL );
 
 
   /* Start scheduler */

@@ -88,7 +88,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|LD4_Pin|LD3_Pin|LD5_Pin 
+  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|PUMP2LD_Pin|PUMP1LD_Pin|PUMP3LD_Pin
                           |LD7_Pin|LD9_Pin|LD10_Pin|LD8_Pin 
                           |LD6_Pin, GPIO_PIN_RESET);
 
@@ -112,7 +112,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pins : PEPin PEPin PEPin PEPin 
                            PEPin PEPin PEPin PEPin 
                            PEPin */
-  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin|LD4_Pin|LD3_Pin|LD5_Pin 
+  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin|PUMP2LD_Pin|PUMP1LD_Pin|PUMP3LD_Pin
                           |LD7_Pin|LD9_Pin|LD10_Pin|LD8_Pin 
                           |LD6_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -192,12 +192,27 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 2 */
-void LEDToggle(uint32_t led)
+void LEDToggle(uint8_t led)
 {
-	switch(led){
-	case 5:
-		HAL_GPIO_TogglePin(GPIOE,LD10_Pin);
-	}
+		switch(led){
+		case 6:
+			HAL_GPIO_TogglePin(LD6_GPIO_Port,LD6_Pin);
+			break;
+		case 7:
+			HAL_GPIO_TogglePin(LD7_GPIO_Port,LD7_Pin);
+			break;
+		case 8:
+			HAL_GPIO_TogglePin(LD8_GPIO_Port,LD8_Pin);
+			break;
+		case 9:
+			HAL_GPIO_TogglePin(LD9_GPIO_Port,LD9_Pin);
+			break;
+		case 10:
+			HAL_GPIO_TogglePin(LD10_GPIO_Port,LD10_Pin);
+			break;
+		default:
+			break;
+		}
 }
 
 uint32_t UserButtonRead(void)
