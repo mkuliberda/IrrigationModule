@@ -51,12 +51,20 @@ void vUserButtonCheckTask(void *pvParameters )
 void vIrrigationControlTask( void *pvParameters )
 {
 
-	struct pumpgpio_s pump1gpio = {PUMP1_GPIO_Port, PUMP1_Pin};
-	struct pumpgpio_s pump1led  = {PUMP1LD_GPIO_Port, PUMP1LD_Pin};
-	struct pumpgpio_s pump2gpio = {PUMP2_GPIO_Port, PUMP2_Pin};
-	struct pumpgpio_s pump2led  = {PUMP2LD_GPIO_Port, PUMP2LD_Pin};
-	struct pumpgpio_s pump3gpio = {PUMP3_GPIO_Port, PUMP3_Pin};
-	struct pumpgpio_s pump3led  = {PUMP3LD_GPIO_Port, PUMP3LD_Pin};
+	const double tank1HeightMeters = 0.43;
+	const double tank1VolumeLiters = 5.0;
+
+	const struct gpio_s pump1gpio = {PUMP1_GPIO_Port, PUMP1_Pin};
+	const struct gpio_s pump1led  = {PUMP1LD_GPIO_Port, PUMP1LD_Pin};
+	const struct gpio_s pump2gpio = {PUMP2_GPIO_Port, PUMP2_Pin};
+	const struct gpio_s pump2led  = {PUMP2LD_GPIO_Port, PUMP2LD_Pin};
+	const struct gpio_s pump3gpio = {PUMP3_GPIO_Port, PUMP3_Pin};
+	const struct gpio_s pump3led  = {PUMP3LD_GPIO_Port, PUMP3LD_Pin};
+
+	const struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
+	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
+	const array<struct gpio_s, 2> opticalwaterlevelsensorGPIO = {opticalwaterlevelsensor1gpio, opticalwaterlevelsensor2gpio};
+	const array<float,10> opticalwaterlevelsensorspos = {0.11, 0.87};
 
 	BinaryPump *pump1 = new BinaryPump();
 	pump1->init(3, 10, pump1gpio, pump1led);
@@ -67,7 +75,15 @@ void vIrrigationControlTask( void *pvParameters )
 	BinaryPump *pump3 = new BinaryPump();
 	pump3->init(3, 10, pump3gpio, pump3led);
 
-	WaterTank *tank1 = new WaterTank(0.43);
+	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
+
+	tank1->init(opticalwaterlevelsensorspos);
+
+	using index_t = array<int,2>::size_type;
+	for (index_t i {0}; i<opticalwaterlevelsensorspos.size(); ++i)
+	{
+		tank1->vWLSensors[i].init(waterlevelsensorsubtype_t::fixed, opticalwaterlevelsensorGPIO[i]);
+	}
 
 	Plant *plant1 = new Plant("Pelargonia");
 	Plant *plant2 = new Plant("Surfinia");

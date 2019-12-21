@@ -14,10 +14,10 @@ bool Pump::init(void){
 }
 
 bool Pump::isRunning(void){
-	return stateGet() == pumpstate_t::running ? true : false;
+	return stateGet() == pumpState_t::running ? true : false;
 }
 
-void Pump::run(double & dt){
+void Pump::run(const double & _dt){
 
 }
 
@@ -26,49 +26,56 @@ void Pump::run(double & dt){
 /*! BinaryPump class implementation */
 /************************************/
 
-bool BinaryPump::init(const uint32_t idletimeRequiredSeconds, const uint32_t runtimeLimitSeconds, struct pumpgpio_s _pinout, struct pumpgpio_s _led){
+bool BinaryPump::init(const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led){
 	this->pinout.pin = _pinout.pin;
 	this->pinout.port = _pinout.port;
 	this->led.pin = _led.pin;
 	this->led.port = _led.port;
-	this->idletimeRequiredSeconds = idletimeRequiredSeconds;
-	this->runtimeLimitSeconds = runtimeLimitSeconds;
+	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
+	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
-	this->stateSet(pumpstate_t::stopped);
+	this->stateSet(pumpState_t::stopped);
 
 	return this->isRunning();
 }
 
-void BinaryPump::run(double & dt, bool & cmd_start, bool & cmd_consumed){
+void BinaryPump::run(const double & _dt, const bool & _cmd_start, bool & cmd_consumed){
 
 	switch (this->stateGet())
 	{
-	case pumpstate_t::init:
+	case pumpState_t::init:
 		this->stop();
 		cmd_consumed = true;
 		break;
 
-	case pumpstate_t::waiting:
-		this->idletimeIncrease(dt);
+	case pumpState_t::waiting:
+		this->idletimeIncrease(_dt);
+		if(this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
+			if (this->start() == true ) cmd_consumed = true;
+		}
+
 		break;
 
-	case pumpstate_t::stopped:
-		this->idletimeIncrease(dt);
-		if((cmd_start == true) && (cmd_consumed == false) && (this->idletimeGetSeconds() > this->idletimeRequiredSeconds)){
+	case pumpState_t::stopped:
+		this->idletimeIncrease(_dt);
+		if((_cmd_start == true) && (cmd_consumed == false) && (this->idletimeGetSeconds() > this->idletimeRequiredSeconds)){
 			if (this->start() == true ) cmd_consumed = true;
+		}
+		else if((_cmd_start == true) && (cmd_consumed == false) && (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds)){
+			this->stateSet(pumpState_t::waiting);
 		}
 		break;
 
-	case pumpstate_t::running:
-		this->runtimeIncrease(dt);
-		if(cmd_start == true){
+	case pumpState_t::running:
+		this->runtimeIncrease(_dt);
+		if(_cmd_start == true){
 			cmd_consumed = true;
 		}
 		else{
 			if(this->stop() == true) cmd_consumed = true;
 		}
-		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds) this->stop();
+		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->forced == false) this->stop();
 		break;
 
 	default:
@@ -84,7 +91,7 @@ bool BinaryPump::start(void){
 
 		HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
-		this->stateSet(pumpstate_t::running);
+		this->stateSet(pumpState_t::running);
 		this->idletimeReset();
 		this->runtimeReset();
 		success = true;
@@ -101,7 +108,7 @@ bool BinaryPump::stop(void){
 
 		HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
-		this->stateSet(pumpstate_t::stopped);
+		this->stateSet(pumpState_t::stopped);
 		this->idletimeReset();
 		this->runtimeReset();
 		success = true;
@@ -116,7 +123,8 @@ void BinaryPump::forcestart(void){
 
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
-	this->stateSet(pumpstate_t::running);
+	this->stateSet(pumpState_t::running);
+	this->forced = true;
 }
 void BinaryPump::forcestop(void){
 
@@ -124,24 +132,25 @@ void BinaryPump::forcestop(void){
 
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
-	this->stateSet(pumpstate_t::stopped);
+	this->stateSet(pumpState_t::stopped);
+	this->forced = true;
 }
 
 
-pumpstate_t BinaryPump::stateGet(void){
+pumpState_t BinaryPump::stateGet(void){
 	return this->state;
 }
 
-void BinaryPump::stateSet(pumpstate_t state){
-	this->state = state;
+void BinaryPump::stateSet(const pumpState_t & _state){
+	this->state = _state;
 }
 
 void BinaryPump::runtimeReset(void){
 	this->runtimeSeconds = 0.0;
 }
 
-void BinaryPump::runtimeIncrease(double & dt){
-	this->runtimeSeconds += dt;
+void BinaryPump::runtimeIncrease(const double & _dt){
+	this->runtimeSeconds += _dt;
 }
 
 double BinaryPump::runtimeGetSeconds(void){
@@ -152,8 +161,8 @@ void BinaryPump::idletimeReset(void){
 	this->idletimeSeconds = 0.0;
 }
 
-void BinaryPump::idletimeIncrease(double & dt){
-	this->idletimeSeconds += dt;
+void BinaryPump::idletimeIncrease(const double & _dt){
+	this->idletimeSeconds += _dt;
 }
 
 double BinaryPump::idletimeGetSeconds(void){
@@ -166,86 +175,117 @@ double BinaryPump::idletimeGetSeconds(void){
 /******************************************/
 /*! WaterLevelSensor class implementation */
 /******************************************/
-WaterLevelSensor::subtype_t  WaterLevelSensor::subtypeGet(void){
+bool WaterLevelSensor::init(const waterlevelsensorsubtype_t & _subtype){
+	this->subtype = subtype;
+	return true;
+}
+
+waterlevelsensorsubtype_t  WaterLevelSensor::subtypeGet(void){
 	return this->subtype;
 }
-
-void WaterLevelSensor::subtypeSet(subtype_t subtype){
-	this->subtype = subtype;
-}
-
-float WaterLevelSensor::convertToPercent(float val, float range){
-	return val/range*100;
-}
-
 
 
 /*************************************************/
 /*! OpticalWaterLevelSensor class implementation */
 /*************************************************/
-void OpticalWaterLevelSensor::stateSet(state_t state){
-	this->state = state;
+bool OpticalWaterLevelSensor::init(const waterlevelsensorsubtype_t & _subtype, const struct gpio_s & _pinout){
+	this->pinout.pin = _pinout.pin;
+	this->pinout.port = _pinout.port;
+	this->subtype = _subtype;
+	this->read();
+	return true;
 }
 
 const float OpticalWaterLevelSensor::mountpositionGet(void){
 	return this->mountpositionMeters;
 }
 
+void OpticalWaterLevelSensor::read(void){
+	if (HAL_GPIO_ReadPin(this->pinout.port, this->pinout.pin) == GPIO_PinState::GPIO_PIN_SET) this->state = fixedwaterlevelsensorState_t::dry;
+	else this->state = fixedwaterlevelsensorState_t::wet;
+}
+
 bool OpticalWaterLevelSensor::isValid(void){
-	return this->state != state_t::unknown ? true : false;
+	return this->state != fixedwaterlevelsensorState_t::undetermined ? true : false;
 }
 
 bool OpticalWaterLevelSensor::isWet(void){
-	return this->state == state_t::wet ? true : false;
+	this->read();
+	return this->state == fixedwaterlevelsensorState_t::wet ? true : false;
 }
 
 
 /***********************************/
 /*! WaterTank class implementation */
 /***********************************/
+
+bool WaterTank::init(const array<float, 10> & _fixedwlsposition){
+
+	using index_t = array<int, 10>::size_type;
+	for (index_t i{ 0 }; i < _fixedwlsposition.size(); ++i)
+	{
+		if ( _fixedwlsposition[i] > 0.0f)
+		{
+			OpticalWaterLevelSensor temp_WLSensor(_fixedwlsposition[i]);
+			this->vWLSensors.push_back(temp_WLSensor);
+		}
+	}
+
+	return true;
+}
+
 double WaterTank::temperatureGet(void){
 
-	this->temperature = 0; //ADC read and calculate temperature function
+	this->temperature = 12.7; //DS18B20 read function TBD
 
 	if(temperature < 0.0){
-		this->_isOK = false;
-		this->stateSet(state_t::frozen);
+		this->stateSet(contentstate_t::frozen);
 	}
 	else{
-		this->_isOK = true;
-		this->stateSet(state_t::liquid);
+		this->stateSet(contentstate_t::liquid);
 	}
 
 	return this->temperature;
 }
 
-bool WaterTank::waterlevelSet(uint8_t & waterlevel){
+bool WaterTank::waterlevelSet(const contentlevel_t & _waterlevel){
 
-	this->waterlevel = waterlevel;
+	bool success = false;
+	this->waterlevel = _waterlevel;
 	//todo: constrain to 0-100
-
-	if (this->waterlevel < 10){
-		this->_isOK = false;
-	}
-	else this->_isOK = true;
-
-	return this->_isOK;
+	return success;
 }
 
-uint8_t WaterTank::waterlevelGet(void){
+WaterTank::contentlevel_t WaterTank::waterlevelGet(void){
 	return this->waterlevel;
 }
 
-bool WaterTank::checkStateOK(void){
+void WaterTank::stateSet(const contentstate_t & _state){
+	this->waterstate = _state;
+}
+
+WaterTank::contentstate_t WaterTank::stateGet(void){
+	return this->waterstate;
+}
+
+bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
+
+	uint8_t waterlevel = 0;
+
+	//TODO:loop over all avbl sensors
+	if(this->vWLSensors[0].isWet()){
+		if(this->waterlevelConvertToPercent(this->vWLSensors[0].mountpositionGet()) > waterlevel){
+			waterlevel = this->vWLSensors[0].mountpositionGet();
+		}
+	}
+
 	return this->_isOK;
 }
 
-WaterTank::state_t WaterTank::stateGet(void){
-	return this->state;
+float WaterTank::waterlevelConvertToPercent(const float & _valMeters){
+	return _valMeters/this->tankheightMeters*100;
 }
-void WaterTank::stateSet(state_t state){
-	this->state = state;
-}
+
 
 
 

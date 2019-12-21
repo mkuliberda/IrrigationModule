@@ -14,19 +14,33 @@
 #include "main.h"
 #include "gpio.h"
 #include <array>
+#include <vector>
 
 
-struct pumpgpio_s{
+struct gpio_s{
 	GPIO_TypeDef* port;
 	uint16_t pin;
 };
 
-enum pumpstate_t: uint8_t{
+enum pumpState_t: uint8_t{
 	init,
 	running,
 	stopped,
 	waiting
 };
+
+enum fixedwaterlevelsensorState_t: uint8_t{
+	undetermined,
+	wet,
+	dry
+};
+
+enum waterlevelsensorsubtype_t: uint8_t {
+	unknown,
+	fixed,
+	floating
+};
+
 
 using namespace std;
 
@@ -34,7 +48,7 @@ class Pump{
 
 protected:
 
-	pumpstate_t state = pumpstate_t::init;									///< current pump's working state based on enum pumpstate_t
+	pumpState_t state = pumpState_t::init;									///< current pump's working state based on enum pumpState_t
 
 	virtual bool start() = 0;
 	virtual bool stop() = 0;
@@ -46,9 +60,9 @@ public:
 	virtual ~Pump(){};
 
 	bool init();
-	virtual void run(double & dt);
-	virtual void stateSet(pumpstate_t st) = 0;
-	virtual pumpstate_t stateGet(void) = 0;
+	virtual void run(const double & _dt);
+	virtual void stateSet(const pumpState_t & _st) = 0;
+	virtual pumpState_t stateGet(void) = 0;
 	virtual bool isRunning(void);
 
 };
@@ -57,18 +71,19 @@ class BinaryPump: public Pump{
 
 private:
 
-	double runtimeSeconds;							///< current runtime, incrementing in running state [seconds]
-	double idletimeSeconds;							///< current idletime incrementing in stopped and waiting state [seconds]
-	uint32_t runtimeLimitSeconds;				///< runtime limit for particular pump [seconds]
+	double runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
+	double idletimeSeconds;					///< current idletime incrementing in stopped and waiting state [seconds]
+	uint32_t runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
 	uint32_t idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
-	struct pumpgpio_s pinout;
-	struct pumpgpio_s led;
+	struct gpio_s pinout;
+	struct gpio_s led;
+	bool forced = false;
 
 	void 	runtimeReset(void);
-	void 	runtimeIncrease(double & dt);
+	void 	runtimeIncrease(const double & _dt);
 	double 	runtimeGetSeconds(void);
 	void 	idletimeReset(void);
-	void 	idletimeIncrease(double & dt);
+	void 	idletimeIncrease(const double & _dt);
 	double 	idletimeGetSeconds(void);
 
 protected:
@@ -86,10 +101,10 @@ public:
 	{};
 
 
-	bool 	init(uint32_t idletimeRequiredSeconds, uint32_t runtimeLimitSeconds, struct pumpgpio_s _pinout, struct pumpgpio_s _led);
-	void 	run(double & dt, bool & cmd_start, bool & cmd_consumed);
-	void 	stateSet(pumpstate_t st) override;
-	pumpstate_t stateGet(void) override;
+	bool 	init(const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
+	void 	run(const double & dt, const bool & _cmd_start, bool & cmd_consumed);
+	void 	stateSet(const pumpState_t & _st) override;
+	pumpState_t stateGet(void) override;
 	void forcestart(void);
 	void forcestop(void);
 
@@ -101,13 +116,9 @@ class WaterLevelSensor{
 
 protected:
 
-	enum class subtype_t: uint8_t {
-		unknown,
-		fixed,
-		floating
-	};
+	waterlevelsensorsubtype_t subtype;
 
-	subtype_t subtype;
+	waterlevelsensorsubtype_t subtypeGet(void);
 
 public:
 
@@ -115,41 +126,35 @@ public:
 
 	virtual ~WaterLevelSensor(){};
 
-	subtype_t subtypeGet(void);
-	void subtypeSet(subtype_t subtype);
-	float convertToPercent(float val, float range);
-
-
+	virtual bool init(const waterlevelsensorsubtype_t & _subtype);
 };
 
 
-class OpticalWaterLevelSensor: public WaterLevelSensor{
+class OpticalWaterLevelSensor: private WaterLevelSensor{
 
 private:
 
-	enum state_t{
-		unknown,
-		wet,
-		dry
-	};
-
 	const float mountpositionMeters;
-	state_t state;
+	fixedwaterlevelsensorState_t state;
+	struct gpio_s pinout;
+
+	const float mountpositionGet(void);
+	void read(void);
 
 public:
 
-	OpticalWaterLevelSensor(const float mountpositionMeters):
-		mountpositionMeters(mountpositionMeters),
-		state(state_t::unknown)
+	OpticalWaterLevelSensor(const float & _mountpositionMeters):
+		mountpositionMeters(_mountpositionMeters),
+		state(fixedwaterlevelsensorState_t::undetermined)
 		{};
 
-	void stateSet(state_t state);
-	const float mountpositionGet(void);
+	bool init(const waterlevelsensorsubtype_t & _subtype, const struct gpio_s & _pinout);
 	bool isValid(void);
 	bool isWet(void);
 
-};
+	friend class WaterTank;
 
+};
 
 
 
@@ -157,46 +162,53 @@ class WaterTank{
 
 private:
 
-	enum class state_t: uint8_t{
+	enum class contentstate_t: uint8_t{
 		unknown = 0,
 		liquid 	= 1,
 		frozen 	= 2
 	};
 
-	double temperature;
-	uint8_t waterlevel;
-	bool _isOK;
-	state_t state;
-	array<float, 10> levels;
-	const double heightMeters;
+	enum class contentlevel_t: uint8_t{
+		unknown		= 255,
+		empty		= 0,
+		low			= 25,
+		medium		= 50,
+		high		= 75,
+		full 		= 100
+	};
 
-	void stateSet(state_t state);
+	double temperature;
+	contentlevel_t waterlevel;
+	bool _isOK;
+	contentstate_t waterstate;
+	const double tankheightMeters;
+	const double tankvolumeLiters;
+
+	double temperatureGet(void);
+	bool waterlevelSet(const contentlevel_t & _waterlevel);
+	contentlevel_t waterlevelGet(void);
+	void stateSet(const contentstate_t & _waterstate);
+	contentstate_t stateGet(void);
+	float waterlevelConvertToPercent(const float & _valMeters);
 
 public:
 
-	WaterTank(const double heightMeters):
+	WaterTank(const double & _tankheightMeters, const double & _tankvolumeLiters):
 		temperature(0.0),
-		waterlevel(0),
+		waterlevel(contentlevel_t::unknown),
 		_isOK(false),
-		state(state_t::unknown),
-		heightMeters(heightMeters)
+		waterstate(contentstate_t::unknown),
+		tankheightMeters(_tankheightMeters),
+		tankvolumeLiters(_tankvolumeLiters)
 	{};
 
 	~WaterTank()
-	{
-		delete WLSensor1;
-		delete WLSensor2;
-	}
+	{};
 
+	vector <OpticalWaterLevelSensor> vWLSensors;
 
-	double temperatureGet(void);
-	bool waterlevelSet(uint8_t & waterlevel);
-	uint8_t waterlevelGet(void);
-	bool checkStateOK(void);
-	state_t stateGet(void);
-
-	OpticalWaterLevelSensor *WLSensor1 = new OpticalWaterLevelSensor(0.25);
-	OpticalWaterLevelSensor *WLSensor2 = new OpticalWaterLevelSensor(0.08);
+	bool init(const array<float,10> & _arr);
+	bool checkStateOK(uint32_t & errcodeBitmask);
 
 };
 
