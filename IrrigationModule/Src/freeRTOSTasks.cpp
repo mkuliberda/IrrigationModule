@@ -53,6 +53,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 	const double tank1HeightMeters = 0.43;
 	const double tank1VolumeLiters = 5.0;
+	uint32_t tank1Status = 0;
 
 	const struct gpio_s pump1gpio = {PUMP1_GPIO_Port, PUMP1_Pin};
 	const struct gpio_s pump1led  = {PUMP1LD_GPIO_Port, PUMP1LD_Pin};
@@ -63,8 +64,6 @@ void vIrrigationControlTask( void *pvParameters )
 
 	const struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
 	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
-	const array<struct gpio_s, 2> opticalwaterlevelsensorGPIO = {opticalwaterlevelsensor1gpio, opticalwaterlevelsensor2gpio};
-	const array<float,10> opticalwaterlevelsensorspos = {0.11, 0.87};
 
 	BinaryPump *pump1 = new BinaryPump();
 	pump1->init(3, 10, pump1gpio, pump1led);
@@ -75,19 +74,24 @@ void vIrrigationControlTask( void *pvParameters )
 	BinaryPump *pump3 = new BinaryPump();
 	pump3->init(3, 10, pump3gpio, pump3led);
 
+	//OpticalWaterLevelSensor *wlssensor1 = new OpticalWaterLevelSensor();
+	//wlssensor1->init(waterlevelsensorsubtype_t::fixed, 0.11, opticalwaterlevelsensor1gpio);
+
+
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
+	tank1->init();
+	tank1->waterlevelSensorAdd(waterlevelsensortype_t::optical);
+	tank1->waterlevelSensorAdd(waterlevelsensortype_t::optical);
 
-	tank1->init(opticalwaterlevelsensorspos);
+	tank1->vOpticalWLSensors[0].init(waterlevelsensorsubtype_t::fixed, 0.43, opticalwaterlevelsensor1gpio);
+	tank1->vOpticalWLSensors[1].init(waterlevelsensorsubtype_t::floating, opticalwaterlevelsensor2gpio);
 
-	using index_t = array<int,2>::size_type;
-	for (index_t i {0}; i<opticalwaterlevelsensorspos.size(); ++i)
-	{
-		tank1->vWLSensors[i].init(waterlevelsensorsubtype_t::fixed, opticalwaterlevelsensorGPIO[i]);
-	}
+	tank1->checkStateOK(tank1Status);
 
-	Plant *plant1 = new Plant("Pelargonia");
-	Plant *plant2 = new Plant("Surfinia");
-	Plant *plant3 = new Plant("Trawa");
+
+	//Plant *plant1 = new Plant("Pelargonia");
+	//Plant *plant2 = new Plant("Surfinia");
+	//Plant *plant3 = new Plant("Trawa");
 
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<1Hz
@@ -128,7 +132,7 @@ void vIrrigationControlTask( void *pvParameters )
 
     delete pump1; delete pump2; delete pump3;
     delete tank1;
-    delete plant1; delete plant2; delete plant3;
+    //delete plant1; delete plant2; delete plant3;
 
 }
 void vStatusNotifyTask( void *pvParameters )

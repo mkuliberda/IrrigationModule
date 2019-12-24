@@ -15,6 +15,8 @@
 #include "gpio.h"
 #include <array>
 #include <vector>
+#include <memory>
+#include <utilities.h>
 
 
 struct gpio_s{
@@ -39,6 +41,17 @@ enum waterlevelsensorsubtype_t: uint8_t {
 	unknown,
 	fixed,
 	floating
+};
+
+enum waterlevelsensortype_t: uint8_t {
+	optical,
+	capacitive,
+	resistive
+};
+
+enum temperaturesensortype_t: uint8_t {
+	analog,
+	digital
 };
 
 
@@ -116,9 +129,11 @@ class WaterLevelSensor{
 
 protected:
 
-	waterlevelsensorsubtype_t subtype;
+	waterlevelsensortype_t 				type;
+	waterlevelsensorsubtype_t 			subtype;
 
-	waterlevelsensorsubtype_t subtypeGet(void);
+	virtual waterlevelsensorsubtype_t 	subtypeGet(void);
+	virtual waterlevelsensortype_t 		typeGet(void);
 
 public:
 
@@ -127,14 +142,15 @@ public:
 	virtual ~WaterLevelSensor(){};
 
 	virtual bool init(const waterlevelsensorsubtype_t & _subtype);
+
 };
 
 
-class OpticalWaterLevelSensor: private WaterLevelSensor{
+class OpticalWaterLevelSensor: protected WaterLevelSensor{
 
 private:
 
-	const float mountpositionMeters;
+	float mountpositionMeters;
 	fixedwaterlevelsensorState_t state;
 	struct gpio_s pinout;
 
@@ -143,16 +159,19 @@ private:
 
 public:
 
-	OpticalWaterLevelSensor(const float & _mountpositionMeters):
-		mountpositionMeters(_mountpositionMeters),
+	OpticalWaterLevelSensor():
+		mountpositionMeters(0),
 		state(fixedwaterlevelsensorState_t::undetermined)
-		{};
+		{
+			this->type = waterlevelsensortype_t::optical;
+		};
 
 	bool init(const waterlevelsensorsubtype_t & _subtype, const struct gpio_s & _pinout);
+	bool init(const waterlevelsensorsubtype_t & _subtype, const float & _mountpositionMeters, const struct gpio_s & _pinout);
 	bool isValid(void);
-	bool isWet(void);
+	bool isSubmersed(void);
 
-	friend class WaterTank;
+	//friend class WaterTank;
 
 };
 
@@ -163,33 +182,43 @@ class WaterTank{
 private:
 
 	enum class contentstate_t: uint8_t{
-		unknown = 0,
-		liquid 	= 1,
-		frozen 	= 2
+		unknown 	= 255,
+		liquid 		= 1,
+		frozen 		= 2,
+		boiling		= 3
 	};
 
 	enum class contentlevel_t: uint8_t{
 		unknown		= 255,
 		empty		= 0,
-		low			= 25,
-		medium		= 50,
-		high		= 75,
+		above10		= 10,
+		above20		= 20,
+		above30		= 30,
+		above40		= 40,
+		above50		= 50,
+		above60		= 60,
+		above70		= 70,
+		above80		= 80,
+		above90		= 90,
 		full 		= 100
 	};
 
-	double temperature;
-	contentlevel_t waterlevel;
-	bool _isOK;
-	contentstate_t waterstate;
-	const double tankheightMeters;
-	const double tankvolumeLiters;
+	double 			temperature;
+	contentlevel_t	waterlevel;
+	bool 			_isOK;
+	contentstate_t 	waterstate;
+	const double 	tankheightMeters;
+	const double 	tankvolumeLiters;
+	const int8_t 	waterlevelSensorsLimit;
+	int8_t			waterlevelSensorsCount;
+	const int8_t 	temperatureSensorsLimit;
+	int8_t			temperatureSensorsCount;
 
-	double temperatureGet(void);
-	bool waterlevelSet(const contentlevel_t & _waterlevel);
-	contentlevel_t waterlevelGet(void);
-	void stateSet(const contentstate_t & _waterstate);
-	contentstate_t stateGet(void);
-	float waterlevelConvertToPercent(const float & _valMeters);
+	void 			waterlevelSet(const contentlevel_t & _waterlevel);
+	contentlevel_t 	waterlevelGet(void);
+	void 			stateSet(const contentstate_t & _waterstate);
+	contentstate_t 	stateGet(void);
+	uint8_t 		waterlevelConvertToPercent(const float & _valMeters);
 
 public:
 
@@ -199,16 +228,24 @@ public:
 		_isOK(false),
 		waterstate(contentstate_t::unknown),
 		tankheightMeters(_tankheightMeters),
-		tankvolumeLiters(_tankvolumeLiters)
+		tankvolumeLiters(_tankvolumeLiters),
+		waterlevelSensorsLimit(10),
+		waterlevelSensorsCount(0),
+		temperatureSensorsLimit(3),
+		temperatureSensorsCount(0)
 	{};
 
 	~WaterTank()
 	{};
 
-	vector <OpticalWaterLevelSensor> vWLSensors;
+	vector <OpticalWaterLevelSensor> vOpticalWLSensors;
 
-	bool init(const array<float,10> & _arr);
-	bool checkStateOK(uint32_t & errcodeBitmask);
+	bool 			init(void);
+	bool 			checkStateOK(uint32_t & errcodeBitmask);
+	double 			temperatureCelsiusGet(void);
+	uint8_t		 	waterlevelPercentGet(void);
+	bool 			waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype);
+	bool 			temperatureSensorAdd(const temperaturesensortype_t & _sensortype);
 
 };
 
