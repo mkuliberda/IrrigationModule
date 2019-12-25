@@ -79,6 +79,8 @@ void MX_UART4_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
+  HAL_UART_MspInit(&huart4);
+
 }
 
 void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)

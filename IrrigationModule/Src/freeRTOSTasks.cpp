@@ -14,6 +14,7 @@
 #include <irrigation.h>
 #include <plants.h>
 #include "gpio.h"
+#include "usart.h"
 #include "main.h"
 
 
@@ -74,19 +75,13 @@ void vIrrigationControlTask( void *pvParameters )
 	BinaryPump *pump3 = new BinaryPump();
 	pump3->init(3, 10, pump3gpio, pump3led);
 
-	//OpticalWaterLevelSensor *wlssensor1 = new OpticalWaterLevelSensor();
-	//wlssensor1->init(waterlevelsensorsubtype_t::fixed, 0.11, opticalwaterlevelsensor1gpio);
-
-
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
 	tank1->init();
 	tank1->waterlevelSensorAdd(waterlevelsensortype_t::optical);
 	tank1->waterlevelSensorAdd(waterlevelsensortype_t::optical);
 
-	tank1->vOpticalWLSensors[0].init(waterlevelsensorsubtype_t::fixed, 0.43, opticalwaterlevelsensor1gpio);
-	tank1->vOpticalWLSensors[1].init(waterlevelsensorsubtype_t::floating, opticalwaterlevelsensor2gpio);
-
-	tank1->checkStateOK(tank1Status);
+	tank1->vOpticalWLSensors[0].init(0.43, opticalwaterlevelsensor1gpio);
+	tank1->vOpticalWLSensors[1].init(0.12, opticalwaterlevelsensor2gpio);
 
 
 	//Plant *plant1 = new Plant("Pelargonia");
@@ -111,14 +106,12 @@ void vIrrigationControlTask( void *pvParameters )
     	{
     		test_cmd = true;
         	pump1->run(dt_seconds,test_cmd, cmd_consumed);
-    		//pump1->forcestart();
     	}
     	else if(test_cnt >= 200 && test_cnt < 400)
     	{
     		if(test_cnt == 110) cmd_consumed = false;
     		test_cmd = false;
         	pump1->run(dt_seconds,test_cmd, cmd_consumed);
-    		//pump1->forcestop();
     	}
     	else if(test_cnt >= 400)
 		{
@@ -140,10 +133,13 @@ void vStatusNotifyTask( void *pvParameters )
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 1 * TASK_FREQ_MULTIPLIER; //<1Hz
 	xLastWakeTime=xTaskGetTickCount();
+	uint8_t message[] = "test message\n";
 
     for( ;; )
     {
-      vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
+        LEDToggle(9);
+    	HAL_UART_Transmit_DMA(&huart4,message,13);
+		vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 
 }

@@ -51,7 +51,11 @@ enum waterlevelsensortype_t: uint8_t {
 
 enum temperaturesensortype_t: uint8_t {
 	analog,
-	digital
+	digital_I2C,
+	digital_SPI,
+	digital_1Wire,
+	digital_UART,
+	digital_CAN
 };
 
 
@@ -141,21 +145,18 @@ public:
 
 	virtual ~WaterLevelSensor(){};
 
-	virtual bool init(const waterlevelsensorsubtype_t & _subtype);
-
 };
 
 
-class OpticalWaterLevelSensor: protected WaterLevelSensor{
+class OpticalWaterLevelSensor: public WaterLevelSensor{
 
 private:
 
-	float mountpositionMeters;
-	fixedwaterlevelsensorState_t state;
-	struct gpio_s pinout;
+	float 							mountpositionMeters;
+	fixedwaterlevelsensorState_t 	state;
+	struct gpio_s 					pinout;
 
-	const float mountpositionGet(void);
-	void read(void);
+	void 							read(void);
 
 public:
 
@@ -164,17 +165,15 @@ public:
 		state(fixedwaterlevelsensorState_t::undetermined)
 		{
 			this->type = waterlevelsensortype_t::optical;
+			this->subtype = waterlevelsensorsubtype_t::fixed;
 		};
 
-	bool init(const waterlevelsensorsubtype_t & _subtype, const struct gpio_s & _pinout);
-	bool init(const waterlevelsensorsubtype_t & _subtype, const float & _mountpositionMeters, const struct gpio_s & _pinout);
-	bool isValid(void);
-	bool isSubmersed(void);
-
-	//friend class WaterTank;
+	const float 					mountpositionGet(void);
+	bool 							init(const float & _mountpositionMeters, const struct gpio_s & _pinout);
+	bool 							isValid(void);
+	bool 							isSubmersed(void);
 
 };
-
 
 
 class WaterTank{
@@ -205,7 +204,6 @@ private:
 
 	double 			temperature;
 	contentlevel_t	waterlevel;
-	bool 			_isOK;
 	contentstate_t 	waterstate;
 	const double 	tankheightMeters;
 	const double 	tankvolumeLiters;
@@ -225,7 +223,6 @@ public:
 	WaterTank(const double & _tankheightMeters, const double & _tankvolumeLiters):
 		temperature(0.0),
 		waterlevel(contentlevel_t::unknown),
-		_isOK(false),
 		waterstate(contentstate_t::unknown),
 		tankheightMeters(_tankheightMeters),
 		tankvolumeLiters(_tankvolumeLiters),

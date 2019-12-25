@@ -175,10 +175,6 @@ double BinaryPump::idletimeGetSeconds(void){
 /******************************************/
 /*! WaterLevelSensor class implementation */
 /******************************************/
-bool WaterLevelSensor::init(const waterlevelsensorsubtype_t & _subtype){
-	this->subtype = _subtype;
-	return true;
-}
 
 waterlevelsensorsubtype_t  WaterLevelSensor::subtypeGet(void){
 	return this->subtype;
@@ -188,43 +184,14 @@ waterlevelsensortype_t WaterLevelSensor::typeGet(void){
 	return this->type;
 }
 
-//WaterLevelSensor *WaterLevelSensor::make(const waterlevelsensortype_t & _type)
-//{
-//
-//	switch (_type)
-//	{
-//	case waterlevelsensortype_t::optical:
-//		return new OpticalWaterLevelSensor;
-//		break;
-////	case waterlevelsensortype_t::capacitive:
-////		return new WaterLevelSensor;
-////		break;
-////	case waterlevelsensortype_t::resistive:
-////		return new WaterLevelSensor;
-////		break;
-//	default:
-//		return new OpticalWaterLevelSensor;
-//		break;
-//	}
-//}
-
-
 /*************************************************/
 /*! OpticalWaterLevelSensor class implementation */
 /*************************************************/
-bool OpticalWaterLevelSensor::init(const waterlevelsensorsubtype_t & _subtype, const struct gpio_s & _pinout){
-	this->pinout.pin = _pinout.pin;
-	this->pinout.port = _pinout.port;
-	this->subtype = _subtype;
-	this->read();
-	return true;
-}
 
-bool OpticalWaterLevelSensor::init(const waterlevelsensorsubtype_t & _subtype, const float & _mountpositionMeters, const struct gpio_s & _pinout){
+bool OpticalWaterLevelSensor::init(const float & _mountpositionMeters, const struct gpio_s & _pinout){
 	this->mountpositionMeters = _mountpositionMeters;
 	this->pinout.pin = _pinout.pin;
 	this->pinout.port = _pinout.port;
-	this->subtype = _subtype;
 	this->read();
 	return true;
 }
@@ -281,6 +248,9 @@ WaterTank::contentstate_t WaterTank::stateGet(void){
 
 bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 
+	uint8_t temp_waterlevelPercent = 0;
+	uint8_t waterlevelPercent = 0;
+	bool 	isOK = true;
 
 	//TODO: fill errcode
 	if (this->temperatureSensorsCount > 0){
@@ -289,10 +259,12 @@ bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 
 		if(temperature < 0.0){
 			this->stateSet(contentstate_t::frozen);
+			isOK = false;
 		}
 		else if (temperature > 100.0)
 		{
 			this->stateSet(contentstate_t::boiling);
+			isOK = false;
 		}
 		else{
 			this->stateSet(contentstate_t::liquid);
@@ -303,20 +275,27 @@ bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 	if (this->waterlevelSensorsCount > 0){
 		uint8_t owls_count = this->vOpticalWLSensors.size();
 		for(int i=0; i<owls_count; i++){
+			if(this->vOpticalWLSensors[i].isValid() && this->vOpticalWLSensors[i].isSubmersed()){
 
+				temp_waterlevelPercent = this->waterlevelConvertToPercent(this->vOpticalWLSensors[i].mountpositionGet());
+				if(temp_waterlevelPercent > waterlevelPercent) waterlevelPercent = temp_waterlevelPercent;
+			}
 		}
 	}
 
-	//uint8_t waterlevel = 0;
+	if		(waterlevelPercent >= 98) 	this->waterlevelSet(contentlevel_t::full);
+	else if	(waterlevelPercent > 90) 	this->waterlevelSet(contentlevel_t::above90);
+	else if (waterlevelPercent > 80) 	this->waterlevelSet(contentlevel_t::above80);
+	else if (waterlevelPercent > 70) 	this->waterlevelSet(contentlevel_t::above70);
+	else if (waterlevelPercent > 60) 	this->waterlevelSet(contentlevel_t::above60);
+	else if (waterlevelPercent > 50) 	this->waterlevelSet(contentlevel_t::above50);
+	else if (waterlevelPercent > 40) 	this->waterlevelSet(contentlevel_t::above40);
+	else if (waterlevelPercent > 30) 	this->waterlevelSet(contentlevel_t::above30);
+	else if (waterlevelPercent > 20) 	this->waterlevelSet(contentlevel_t::above20);
+	else if (waterlevelPercent > 10) 	this->waterlevelSet(contentlevel_t::above10);
+	else if (waterlevelPercent >= 0) 	{this->waterlevelSet(contentlevel_t::empty); isOK = false;}
 
-	//TODO:loop over all avbl sensors
-//	if(this->vWLSensors[0].isSubmersed()){
-//		if(this->waterlevelConvertToPercent(this->vWLSensors[0].mountpositionGet()) > waterlevel){
-//			waterlevel = this->vWLSensors[0].mountpositionGet();
-//		}
-//	}
-
-	return this->_isOK;
+	return isOK;
 }
 
 uint8_t WaterTank::waterlevelConvertToPercent(const float & _valMeters){
@@ -324,7 +303,7 @@ uint8_t WaterTank::waterlevelConvertToPercent(const float & _valMeters){
 }
 
 uint8_t WaterTank::waterlevelPercentGet(void){
-	return 70;
+	return static_cast<uint8_t>(this->waterlevel);
 }
 
 
