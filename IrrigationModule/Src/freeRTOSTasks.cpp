@@ -39,12 +39,17 @@ void vUserButtonCheckTask(void *pvParameters )
 	vSemaphoreCreateBinary(xUserButtonSemaphore);
 
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<10Hz
+	const portTickType xFrequencySeconds = 0.2 * TASK_FREQ_MULTIPLIER; //<5Hz
 	xLastWakeTime=xTaskGetTickCount();
 
     for( ;; )
     {
-      vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
+    	if (UserButtonRead() == 1)
+    	{
+    		LEDToggle(8);
+    		xSemaphoreGive(xUserButtonSemaphore);
+    	}
+    	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 }
 
@@ -67,7 +72,7 @@ void vIrrigationControlTask( void *pvParameters )
 	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
 	BinaryPump *pump1 = new BinaryPump();
-	pump1->init(3, 10, pump1gpio, pump1led);
+	pump1->init(2, 5, pump1gpio, pump1led);
 
 	BinaryPump *pump2 = new BinaryPump();
 	pump2->init(3, 10, pump2gpio, pump2led);
@@ -89,7 +94,7 @@ void vIrrigationControlTask( void *pvParameters )
 	//Plant *plant3 = new Plant("Trawa");
 
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<1Hz
+	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
 	xLastWakeTime=xTaskGetTickCount();
 
 	double dt_seconds = xFrequencySeconds/1000.0f;
@@ -102,6 +107,7 @@ void vIrrigationControlTask( void *pvParameters )
 
     for( ;; )
     {
+    	tank1->checkStateOK(tank1Status);
     	if(test_cnt < 200)
     	{
     		test_cmd = true;
@@ -109,7 +115,7 @@ void vIrrigationControlTask( void *pvParameters )
     	}
     	else if(test_cnt >= 200 && test_cnt < 400)
     	{
-    		if(test_cnt == 110) cmd_consumed = false;
+    		if(test_cnt == 250) cmd_consumed = false;
     		test_cmd = false;
         	pump1->run(dt_seconds,test_cmd, cmd_consumed);
     	}
@@ -131,15 +137,22 @@ void vIrrigationControlTask( void *pvParameters )
 void vStatusNotifyTask( void *pvParameters )
 {
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 1 * TASK_FREQ_MULTIPLIER; //<1Hz
+	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
 	uint8_t message[] = "test message\n";
 
     for( ;; )
     {
-        LEDToggle(9);
-    	HAL_UART_Transmit_DMA(&huart4,message,13);
-		vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
+        if(xUserButtonSemaphore != NULL)
+        {
+           if (xSemaphoreTake(xUserButtonSemaphore, (portTickType)2) == pdTRUE)
+           {
+        	   HAL_UART_Transmit_DMA(&huart4,message,13);
+        	   HAL_UART_DMAResume(&huart4);
+        	   LEDToggle(9);
+           }
+        }
+        vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 
 }

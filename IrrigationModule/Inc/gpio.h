@@ -71,6 +71,7 @@ void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 void LEDToggle(uint8_t led);
+uint8_t UserButtonRead(void);
 
 /* USER CODE END Prototypes */
 

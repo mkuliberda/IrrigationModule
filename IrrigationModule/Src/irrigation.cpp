@@ -201,7 +201,7 @@ const float OpticalWaterLevelSensor::mountpositionGet(void){
 }
 
 void OpticalWaterLevelSensor::read(void){
-	if (HAL_GPIO_ReadPin(this->pinout.port, this->pinout.pin) == GPIO_PinState::GPIO_PIN_SET) this->state = fixedwaterlevelsensorState_t::dry;
+	if (HAL_GPIO_ReadPin(this->pinout.port, this->pinout.pin) == GPIO_PIN_SET) this->state = fixedwaterlevelsensorState_t::dry;
 	else this->state = fixedwaterlevelsensorState_t::wet;
 }
 
@@ -248,26 +248,52 @@ WaterTank::contentstate_t WaterTank::stateGet(void){
 
 bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 
+	/******************************errcodeBitmask****************************************
+	 * *Upper 16 bits										Lower 16 bits
+	 * 00000000 00000000 									00000000 00000000
+	 * |||||||| ||||||||->water temperature too low	 (16)	|||||||| ||||||||->(0)
+	 * |||||||| |||||||-->water temperature too high (17)	|||||||| |||||||-->(1)
+	 * |||||||| ||||||--->water level too low		 (18)	|||||||| ||||||--->(2)
+	 * |||||||| |||||---->							 (19)	|||||||| |||||---->(3)
+	 * |||||||| ||||----->temperature sensor1 invalid(20)	|||||||| ||||----->(4)
+	 * |||||||| |||------>temperature sensor2 invalid(21)	|||||||| |||------>(5)
+	 * |||||||| ||------->wl sensor1 invalid         (22)	|||||||| ||------->(6)
+	 * |||||||| |-------->wl sensor2 invalid         (23)	|||||||| |-------->(7)
+	 * ||||||||---------->wl sensor3 invalid         (24)	||||||||---------->(8)
+	 * |||||||----------->wl sensor4 invalid         (25)	|||||||----------->(9)
+	 * ||||||------------>wl sensor5 invalid         (26)	||||||------------>(10)
+	 * |||||------------->wl sensor6 invalid         (27)	|||||------------->(11)
+	 * ||||-------------->wl sensor7 invalid         (28)	||||-------------->(12)
+	 * |||--------------->wl sensor8 invalid         (29)	|||--------------->(13)
+	 * ||---------------->wl sensor9 invalid         (30)	||---------------->(14)
+	 * |----------------->wl sensor10 invalid        (31)	|----------------->(15)
+	 */
+
 	uint8_t temp_waterlevelPercent = 0;
 	uint8_t waterlevelPercent = 0;
 	bool 	isOK = true;
+	errcodeBitmask = 0xFFFFFFFF;
 
-	//TODO: fill errcode
+	//TODO: fill errcode sensors
 	if (this->temperatureSensorsCount > 0){
 
 		double temperature = this->temperatureCelsiusGet();
 
 		if(temperature < 0.0){
 			this->stateSet(contentstate_t::frozen);
+			errcodeBitmask = errcodeBitmask & (~(1 << (17))); //clear temp too high bit
 			isOK = false;
 		}
 		else if (temperature > 100.0)
 		{
 			this->stateSet(contentstate_t::boiling);
+			errcodeBitmask = errcodeBitmask & (~(1 << (16))); //clear temp too low bit
 			isOK = false;
 		}
 		else{
 			this->stateSet(contentstate_t::liquid);
+			errcodeBitmask = errcodeBitmask & (~(1 << (16))); //clear temp too low bit
+			errcodeBitmask = errcodeBitmask & (~(1 << (17))); //clear temp too high bit
 		}
 	}
 
@@ -283,17 +309,17 @@ bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 		}
 	}
 
-	if		(waterlevelPercent >= 98) 	this->waterlevelSet(contentlevel_t::full);
-	else if	(waterlevelPercent > 90) 	this->waterlevelSet(contentlevel_t::above90);
-	else if (waterlevelPercent > 80) 	this->waterlevelSet(contentlevel_t::above80);
-	else if (waterlevelPercent > 70) 	this->waterlevelSet(contentlevel_t::above70);
-	else if (waterlevelPercent > 60) 	this->waterlevelSet(contentlevel_t::above60);
-	else if (waterlevelPercent > 50) 	this->waterlevelSet(contentlevel_t::above50);
-	else if (waterlevelPercent > 40) 	this->waterlevelSet(contentlevel_t::above40);
-	else if (waterlevelPercent > 30) 	this->waterlevelSet(contentlevel_t::above30);
+	if		(waterlevelPercent >= 98) 	{ this->waterlevelSet(contentlevel_t::full); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
+	else if	(waterlevelPercent > 90) 	{ this->waterlevelSet(contentlevel_t::above90); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
+	else if (waterlevelPercent > 80) 	{ this->waterlevelSet(contentlevel_t::above80); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
+	else if (waterlevelPercent > 70) 	{ this->waterlevelSet(contentlevel_t::above70); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
+	else if (waterlevelPercent > 60) 	{ this->waterlevelSet(contentlevel_t::above60); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
+	else if (waterlevelPercent > 50) 	{ this->waterlevelSet(contentlevel_t::above50); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
+	else if (waterlevelPercent > 40) 	{ this->waterlevelSet(contentlevel_t::above40); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
+	else if (waterlevelPercent > 30) 	{ this->waterlevelSet(contentlevel_t::above30); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
 	else if (waterlevelPercent > 20) 	this->waterlevelSet(contentlevel_t::above20);
 	else if (waterlevelPercent > 10) 	this->waterlevelSet(contentlevel_t::above10);
-	else if (waterlevelPercent >= 0) 	{this->waterlevelSet(contentlevel_t::empty); isOK = false;}
+	else if (waterlevelPercent >= 0) 	{ this->waterlevelSet(contentlevel_t::empty); isOK = false; }
 
 	return isOK;
 }
@@ -334,6 +360,9 @@ bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 	return success;
 }
 
+bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype){
+	return true;
+}
 
 
 

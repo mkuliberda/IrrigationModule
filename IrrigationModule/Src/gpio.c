@@ -215,16 +215,19 @@ void LEDToggle(uint8_t led)
 		}
 }
 
-uint32_t UserButtonRead(void)
+uint8_t UserButtonRead(void)
 {
 	uint32_t count = 0;
+	uint8_t pressed = 0;
 
     while(count < DEBOUNCECOUNTS)
     {
         count ++;
     }
+    if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) pressed = 1;
+    else pressed = 0;
 
-	 return HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin);
+    return pressed;
 }
 
 /* USER CODE END 2 */
