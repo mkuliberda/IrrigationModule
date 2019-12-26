@@ -60,15 +60,22 @@ TIM_HandleTypeDef htim7;
 void MX_TIM7_Init(void)
 {
   TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_ClockConfigTypeDef sClockSourceConfig;
 
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 64; //TODO: check if this is correct
+  htim7.Init.Prescaler = 64-1; //TODO: check if this is correct
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim7.Init.Period = 65535;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim7, &sClockSourceConfig) != HAL_OK)
+  {
+	 _Error_Handler(__FILE__, __LINE__);
   }
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
