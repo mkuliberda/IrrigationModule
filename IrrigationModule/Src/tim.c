@@ -86,6 +86,7 @@ void MX_TIM7_Init(void)
   }
 
   HAL_TIM_Base_MspInit(&htim7);
+  HAL_TIM_Base_Start(&htim7);
 
 }
 

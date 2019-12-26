@@ -264,9 +264,9 @@ bool DS18B20::prep(void){
 }
 
 /* delay in microseconds */
-void DS18B20::delay_us (const uint32_t & _us){ //TODO: set timer counter to us
+void DS18B20::delay_us (const uint32_t & _us){
 	__HAL_TIM_SET_COUNTER(this->timer,0);
-	//while ((__HAL_TIM_GET_COUNTER(this->timer))<_us); //TODO: not working now
+	while ((__HAL_TIM_GET_COUNTER(this->timer))<_us);
 }
 
 void DS18B20::gpioSetInput (void){
