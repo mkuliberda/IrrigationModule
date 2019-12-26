@@ -170,8 +170,6 @@ double BinaryPump::idletimeGetSeconds(void){
 }
 
 
-
-
 /******************************************/
 /*! WaterLevelSensor class implementation */
 /******************************************/
@@ -219,6 +217,159 @@ bool OpticalWaterLevelSensor::isSubmersed(void){
 	return this->state == fixedwaterlevelsensorState_t::wet ? true : false;
 }
 
+/******************************************/
+/*! TemperatureSensor class implementation */
+/******************************************/
+
+temperaturesensortype_t TemperatureSensor::typeGet(void){
+	return this->type;
+}
+
+sensorinterfacetype_t TemperatureSensor::interfacetypeGet(void){
+	return this->interfacetype;
+}
+
+/******************************************/
+/*! DS18B20 class implementation */
+/******************************************/
+bool DS18B20::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle){
+
+	this->gpio.port = _gpio.port;
+	this->gpio.pin = _gpio.pin;
+	this->timer = _tim_baseHandle;
+	this->valid = this->prep();
+	return this->valid;
+}
+
+bool DS18B20::prep(void){
+
+	this->gpioSetOutput ();   // set the pin as output
+	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin low
+	this->delay_us (480);   // delay according to datasheet
+
+	this->gpioSetInput ();    // set the pin as input
+	this->delay_us (80);    // delay according to datasheet
+
+	if (!(HAL_GPIO_ReadPin (this->gpio.port, this->gpio.pin)))    // if the pin is low i.e the presence pulse is there
+	{
+		this->delay_us (400);  // wait for 400 us
+		return true;
+	}
+
+	else
+	{
+		this->delay_us (400);
+		return false;
+	}
+}
+
+/* delay in microseconds */
+void DS18B20::delay_us (const uint32_t & _us){ //TODO: set timer counter to us
+	__HAL_TIM_SET_COUNTER(this->timer,0);
+	while ((__HAL_TIM_GET_COUNTER(this->timer))<_us);
+}
+
+void DS18B20::gpioSetInput (void){
+
+	GPIO_InitTypeDef GPIO_InitStruct;
+	GPIO_InitStruct.Pin = this->gpio.pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(this->gpio.port, &GPIO_InitStruct);
+}
+
+
+void DS18B20::gpioSetOutput (void){
+
+	GPIO_InitTypeDef GPIO_InitStruct;
+	GPIO_InitStruct.Pin = this->gpio.pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(this->gpio.port, &GPIO_InitStruct);
+}
+
+void DS18B20::write (const uint8_t & _data){
+
+	this->gpioSetOutput();   // set as output
+
+	for (int i=0; i<8; i++)
+	{
+
+		if ((_data & (1<<i))!=0)  // if the bit is high
+		{
+			// write 1
+
+			this->gpioSetOutput();  // set as output
+			HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin LOW
+			this->delay_us(1);  // wait for  us
+
+			this->gpioSetInput();  // set as input
+			this->delay_us(60);  // wait for 60 us
+		}
+
+		else  // if the bit is low
+		{
+			// write 0
+
+			this->gpioSetOutput();
+			HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin LOW
+			this->delay_us(60);  // wait for 60 us
+
+			this->gpioSetInput();
+		}
+	}
+}
+
+
+uint8_t DS18B20::read (void){
+
+	uint8_t value=0;
+
+	this->gpioSetInput();
+
+	for (int i=0;i<8;i++)
+	{
+		this->gpioSetOutput();   // set as output
+
+		HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the data pin LOW
+		this->delay_us(2);  // wait for 2 us
+
+		this->gpioSetInput();  // set as input
+		if (HAL_GPIO_ReadPin (this->gpio.port, this->gpio.pin))  // if the pin is HIGH
+		{
+			value |= 1<<i;  // read = 1
+		}
+		this->delay_us(60);  // wait for 60 us
+	}
+	return value;
+}
+
+bool DS18B20::isValid(void){
+	return this->valid;
+}
+
+float DS18B20::temperatureCelsiusRead(void){
+
+	uint8_t temp_l = 0, temp_h = 0;
+	uint16_t temp = 0;
+
+	this->prep (); //TODO: is this required here?
+	this->write (0xCC);  // skip ROM
+	this->write (0x44);  // convert t
+
+	HAL_Delay (800);
+
+	this->prep (); //TODO: is this required here?
+	this->write (0xCC);  // skip ROM
+	this->write (0xBE);  // Read Scratchpad
+
+	temp_l = this->read();
+	temp_h = this->read();
+	temp = (temp_h<<8)|temp_l;
+
+	return static_cast<float> (temp/16);
+}
 
 /***********************************/
 /*! WaterTank class implementation */
@@ -229,10 +380,8 @@ bool WaterTank::init(void){
 	return true;
 }
 
-double WaterTank::temperatureCelsiusGet(void){
-
-	this->temperature = 12.7; //DS18B20 read function TBD
-	return this->temperature;
+float WaterTank::temperatureCelsiusGet(void){
+	return this->mean_watertemperatureCelsius;
 }
 
 void WaterTank::waterlevelSet(const contentlevel_t & _waterlevel){
@@ -280,18 +429,26 @@ bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 	bitset<32> errcode; errcode.set();  //initialize bitset and set all bits to 1
 
 
-
-	//TODO: add multiple temperature sensors part
 	if (this->temperatureSensorsCount > 0){
 
-		double temperature = this->temperatureCelsiusGet();
+		const uint8_t temps_count = this->vTemperatureSensors.size();
+		vector <float> vTemperature;
 
-		if(temperature < 0.0){
+		for(uint8_t i=0; i<temps_count; i++){
+			if(this->vTemperatureSensors[i].isValid() == true){
+				vTemperature[i] = this->vTemperatureSensors[i].temperatureCelsiusRead();
+				errcode.reset(20+i);
+			}
+		}
+
+		this->mean_watertemperatureCelsius = (accumulate(vTemperature.begin(), vTemperature.end(), 0))/vTemperature.size();
+
+		if(this->mean_watertemperatureCelsius < 0.0){
 			this->stateSet(contentstate_t::frozen);
 			errcode.reset(17);
 			isOK = false;
 		}
-		else if (temperature > 100.0)
+		else if (this->mean_watertemperatureCelsius > 100.0)
 		{
 			this->stateSet(contentstate_t::boiling);
 			errcode.reset(16);
@@ -302,6 +459,10 @@ bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 			errcode.reset(16);
 			errcode.reset(17);
 		}
+	}
+	else{
+		//let's let it work without temperature sensor for now, but with errorcodes
+		this->stateSet(contentstate_t::liquid);
 	}
 
 
@@ -343,7 +504,6 @@ uint8_t WaterTank::waterlevelPercentGet(void){
 	return static_cast<uint8_t>(this->waterlevel);
 }
 
-
 bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 
 	bool success = false;
@@ -372,10 +532,27 @@ bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 }
 
 bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype){
-	return true;
+
+	bool success = false;
+
+	switch (_sensortype)
+	{
+	case temperaturesensortype_t::ds18b20:
+		if (this->temperatureSensorsCount < (this->temperatureSensorsLimit+1))
+		{
+			DS18B20 temp_sensor;
+			this->vTemperatureSensors.push_back(temp_sensor);
+			this->temperatureSensorsCount++;
+			success = true;
+		}
+		break;
+
+	case temperaturesensortype_t::generic:
+		break;
+	}
+
+	return success;
 }
-
-
 
 
 

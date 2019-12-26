@@ -13,11 +13,13 @@
 #include <string>
 #include "main.h"
 #include "gpio.h"
+#include "tim.h"
 #include <array>
 #include <vector>
 #include <memory>
 #include <utilities.h>
 #include <bitset>
+#include <numeric>
 
 
 struct gpio_s{
@@ -61,9 +63,9 @@ enum sensorinterfacetype_t {
 };
 
 enum temperaturesensortype_t: uint8_t {
-	TEMP_resistive
+	generic,
+	ds18b20
 };
-
 
 using namespace std;
 
@@ -184,6 +186,53 @@ public:
 
 };
 
+class TemperatureSensor{
+
+protected:
+
+	temperaturesensortype_t 			type;
+	sensorinterfacetype_t				interfacetype;
+
+	temperaturesensortype_t 	typeGet(void);
+	sensorinterfacetype_t 		interfacetypeGet(void);
+
+public:
+
+	TemperatureSensor(){};
+
+	virtual ~TemperatureSensor(){};
+
+};
+
+class DS18B20: public TemperatureSensor{
+
+private:
+
+	bool 					valid;
+	struct 					gpio_s gpio;
+	TIM_HandleTypeDef* 		timer;
+
+	bool 					prep(void);
+	void 					delay_us (const uint32_t & _us);
+	void 					gpioSetInput (void);
+	void 					gpioSetOutput (void);
+	void 					write (const uint8_t & _data);
+	uint8_t 				read(void);
+
+public:
+
+	DS18B20():
+		valid(false)
+	{
+		this->interfacetype = sensorinterfacetype_t::digital_1Wire;
+		this->type = temperaturesensortype_t::ds18b20;
+	};
+
+	bool 					init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle);
+	bool 					isValid(void);
+	float 					temperatureCelsiusRead(void);
+
+};
 
 class WaterTank{
 
@@ -211,7 +260,7 @@ private:
 		full 		= 100
 	};
 
-	double 			temperature;
+	float			mean_watertemperatureCelsius;
 	contentlevel_t	waterlevel;
 	contentstate_t 	waterstate;
 	const double 	tankheightMeters;
@@ -230,7 +279,7 @@ private:
 public:
 
 	WaterTank(const double & _tankheightMeters, const double & _tankvolumeLiters):
-		temperature(0.0),
+		mean_watertemperatureCelsius(0.0),
 		waterlevel(contentlevel_t::unknown),
 		waterstate(contentstate_t::unknown),
 		tankheightMeters(_tankheightMeters),
@@ -244,11 +293,12 @@ public:
 	~WaterTank()
 	{};
 
-	vector <OpticalWaterLevelSensor> vOpticalWLSensors;
+	vector <OpticalWaterLevelSensor> 	vOpticalWLSensors;
+	vector <DS18B20> 					vTemperatureSensors;
 
 	bool 			init(void);
 	bool 			checkStateOK(uint32_t & errcodeBitmask);
-	double 			temperatureCelsiusGet(void);
+	float 			temperatureCelsiusGet(void);
 	uint8_t		 	waterlevelPercentGet(void);
 	bool 			waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype);
 	bool 			temperatureSensorAdd(const temperaturesensortype_t & _sensortype);

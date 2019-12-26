@@ -15,10 +15,12 @@
 #include <plants.h>
 #include "gpio.h"
 #include "usart.h"
+#include "tim.h"
 #include "main.h"
 
 
 SemaphoreHandle_t xUserButtonSemaphore = NULL;
+xQueueHandle tank1StatusQueue;
 
 
 void vLEDFlashTask( void *pvParameters )
@@ -57,6 +59,12 @@ void vUserButtonCheckTask(void *pvParameters )
 void vIrrigationControlTask( void *pvParameters )
 {
 
+	portTickType xLastWakeTime;
+	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
+	xLastWakeTime=xTaskGetTickCount();
+
+	double dt_seconds = xFrequencySeconds/1000.0f;
+
 	const double tank1HeightMeters = 0.43;
 	const double tank1VolumeLiters = 5.0;
 	uint32_t tank1Status = 0;
@@ -67,6 +75,7 @@ void vIrrigationControlTask( void *pvParameters )
 	const struct gpio_s pump2led  = {PUMP2LD_GPIO_Port, PUMP2LD_Pin};
 	const struct gpio_s pump3gpio = {PUMP3_GPIO_Port, PUMP3_Pin};
 	const struct gpio_s pump3led  = {PUMP3LD_GPIO_Port, PUMP3LD_Pin};
+	const struct gpio_s ds18b20gpio = {ONEWIRE_GPIO_Port, ONEWIRE_Pin};
 
 	const struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
 	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
@@ -84,20 +93,15 @@ void vIrrigationControlTask( void *pvParameters )
 	tank1->init();
 	tank1->waterlevelSensorAdd(waterlevelsensortype_t::WLS_optical);
 	tank1->waterlevelSensorAdd(waterlevelsensortype_t::WLS_optical);
+	tank1->temperatureSensorAdd(temperaturesensortype_t::ds18b20);
 
 	tank1->vOpticalWLSensors[0].init(0.43, opticalwaterlevelsensor1gpio);
 	tank1->vOpticalWLSensors[1].init(0.12, opticalwaterlevelsensor2gpio);
-
+	tank1->vTemperatureSensors[0].init(ds18b20gpio, &htim7);
 
 	//Plant *plant1 = new Plant("Pelargonia");
 	//Plant *plant2 = new Plant("Surfinia");
 	//Plant *plant3 = new Plant("Trawa");
-
-	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
-	xLastWakeTime=xTaskGetTickCount();
-
-	double dt_seconds = xFrequencySeconds/1000.0f;
 
 	bool test_cmd = true;
 	bool cmd_consumed = false;
