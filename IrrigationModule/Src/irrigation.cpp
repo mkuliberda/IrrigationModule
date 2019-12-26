@@ -272,54 +272,60 @@ bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 	uint8_t temp_waterlevelPercent = 0;
 	uint8_t waterlevelPercent = 0;
 	bool 	isOK = true;
-	errcodeBitmask = 0xFFFFFFFF;
+	bitset<32> errcode; errcode.set();  //initialize bitset and set all bits to 1
 
-	//TODO: fill errcode sensors
+
+
+	//TODO: add multiple temperature sensors part
 	if (this->temperatureSensorsCount > 0){
 
 		double temperature = this->temperatureCelsiusGet();
 
 		if(temperature < 0.0){
 			this->stateSet(contentstate_t::frozen);
-			errcodeBitmask = errcodeBitmask & (~(1 << (17))); //clear temp too high bit
+			errcode.reset(17);
 			isOK = false;
 		}
 		else if (temperature > 100.0)
 		{
 			this->stateSet(contentstate_t::boiling);
-			errcodeBitmask = errcodeBitmask & (~(1 << (16))); //clear temp too low bit
+			errcode.reset(16);
 			isOK = false;
 		}
 		else{
 			this->stateSet(contentstate_t::liquid);
-			errcodeBitmask = errcodeBitmask & (~(1 << (16))); //clear temp too low bit
-			errcodeBitmask = errcodeBitmask & (~(1 << (17))); //clear temp too high bit
+			errcode.reset(16);
+			errcode.reset(17);
 		}
 	}
 
 
 	if (this->waterlevelSensorsCount > 0){
 		uint8_t owls_count = this->vOpticalWLSensors.size();
-		for(int i=0; i<owls_count; i++){
-			if(this->vOpticalWLSensors[i].isValid() && this->vOpticalWLSensors[i].isSubmersed()){
-
-				temp_waterlevelPercent = this->waterlevelConvertToPercent(this->vOpticalWLSensors[i].mountpositionGet());
-				if(temp_waterlevelPercent > waterlevelPercent) waterlevelPercent = temp_waterlevelPercent;
+		for(uint8_t i=0; i<owls_count; i++){
+			if(this->vOpticalWLSensors[i].isValid() == true){
+				errcode.reset(22+i);
+				if (this->vOpticalWLSensors[i].isSubmersed()){
+					temp_waterlevelPercent = this->waterlevelConvertToPercent(this->vOpticalWLSensors[i].mountpositionGet());
+					if(temp_waterlevelPercent > waterlevelPercent) waterlevelPercent = temp_waterlevelPercent;
+				}
 			}
 		}
 	}
 
-	if		(waterlevelPercent >= 98) 	{ this->waterlevelSet(contentlevel_t::full); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
-	else if	(waterlevelPercent > 90) 	{ this->waterlevelSet(contentlevel_t::above90); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
-	else if (waterlevelPercent > 80) 	{ this->waterlevelSet(contentlevel_t::above80); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
-	else if (waterlevelPercent > 70) 	{ this->waterlevelSet(contentlevel_t::above70); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
-	else if (waterlevelPercent > 60) 	{ this->waterlevelSet(contentlevel_t::above60); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
-	else if (waterlevelPercent > 50) 	{ this->waterlevelSet(contentlevel_t::above50); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
-	else if (waterlevelPercent > 40) 	{ this->waterlevelSet(contentlevel_t::above40); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
-	else if (waterlevelPercent > 30) 	{ this->waterlevelSet(contentlevel_t::above30); errcodeBitmask = errcodeBitmask & (~(1 << (18))); }
+	if		(waterlevelPercent >= 98) 	{ this->waterlevelSet(contentlevel_t::full); errcode.reset(18); }
+	else if	(waterlevelPercent > 90) 	{ this->waterlevelSet(contentlevel_t::above90); errcode.reset(18); }
+	else if (waterlevelPercent > 80) 	{ this->waterlevelSet(contentlevel_t::above80); errcode.reset(18); }
+	else if (waterlevelPercent > 70) 	{ this->waterlevelSet(contentlevel_t::above70); errcode.reset(18); }
+	else if (waterlevelPercent > 60) 	{ this->waterlevelSet(contentlevel_t::above60); errcode.reset(18); }
+	else if (waterlevelPercent > 50) 	{ this->waterlevelSet(contentlevel_t::above50); errcode.reset(18); }
+	else if (waterlevelPercent > 40) 	{ this->waterlevelSet(contentlevel_t::above40); errcode.reset(18); }
+	else if (waterlevelPercent > 30) 	{ this->waterlevelSet(contentlevel_t::above30); errcode.reset(18); }
 	else if (waterlevelPercent > 20) 	this->waterlevelSet(contentlevel_t::above20);
 	else if (waterlevelPercent > 10) 	this->waterlevelSet(contentlevel_t::above10);
 	else if (waterlevelPercent >= 0) 	{ this->waterlevelSet(contentlevel_t::empty); isOK = false; }
+
+	errcodeBitmask = errcode.to_ulong();
 
 	return isOK;
 }

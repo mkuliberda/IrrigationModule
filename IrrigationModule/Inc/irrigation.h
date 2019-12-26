@@ -17,6 +17,7 @@
 #include <vector>
 #include <memory>
 #include <utilities.h>
+#include <bitset>
 
 
 struct gpio_s{
