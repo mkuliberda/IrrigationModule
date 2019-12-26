@@ -82,8 +82,8 @@ void vIrrigationControlTask( void *pvParameters )
 
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
 	tank1->init();
-	tank1->waterlevelSensorAdd(waterlevelsensortype_t::optical);
-	tank1->waterlevelSensorAdd(waterlevelsensortype_t::optical);
+	tank1->waterlevelSensorAdd(waterlevelsensortype_t::WLS_optical);
+	tank1->waterlevelSensorAdd(waterlevelsensortype_t::WLS_optical);
 
 	tank1->vOpticalWLSensors[0].init(0.43, opticalwaterlevelsensor1gpio);
 	tank1->vOpticalWLSensors[1].init(0.12, opticalwaterlevelsensor2gpio);

@@ -184,6 +184,11 @@ waterlevelsensortype_t WaterLevelSensor::typeGet(void){
 	return this->type;
 }
 
+sensorinterfacetype_t WaterLevelSensor::interfacetypeGet(void){
+	return this->interfacetype;
+}
+
+
 /*************************************************/
 /*! OpticalWaterLevelSensor class implementation */
 /*************************************************/
@@ -345,7 +350,7 @@ bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 
 	switch (_sensortype)
 	{
-	case waterlevelsensortype_t::optical:
+	case waterlevelsensortype_t::WLS_optical:
 		if (this->waterlevelSensorsCount < (this->waterlevelSensorsLimit+1))
 		{
 			OpticalWaterLevelSensor temp_sensor;
@@ -355,10 +360,10 @@ bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 		}
 		break;
 
-	case waterlevelsensortype_t::capacitive:
+	case waterlevelsensortype_t::WLS_capacitive:
 		break;
 
-	case waterlevelsensortype_t::resistive:
+	case waterlevelsensortype_t::WLS_resistive:
 		break;
 
 	}

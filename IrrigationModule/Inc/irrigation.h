@@ -45,18 +45,23 @@ enum waterlevelsensorsubtype_t: uint8_t {
 };
 
 enum waterlevelsensortype_t: uint8_t {
-	optical,
-	capacitive,
-	resistive
+	WLS_optical,
+	WLS_capacitive,
+	WLS_resistive
 };
 
-enum temperaturesensortype_t: uint8_t {
+enum sensorinterfacetype_t {
+	gpio,
 	analog,
 	digital_I2C,
 	digital_SPI,
 	digital_1Wire,
 	digital_UART,
 	digital_CAN
+};
+
+enum temperaturesensortype_t: uint8_t {
+	TEMP_resistive
 };
 
 
@@ -136,9 +141,11 @@ protected:
 
 	waterlevelsensortype_t 				type;
 	waterlevelsensorsubtype_t 			subtype;
+	sensorinterfacetype_t				interfacetype;
 
 	virtual waterlevelsensorsubtype_t 	subtypeGet(void);
 	virtual waterlevelsensortype_t 		typeGet(void);
+	virtual sensorinterfacetype_t 		interfacetypeGet(void);
 
 public:
 
@@ -165,8 +172,9 @@ public:
 		mountpositionMeters(0),
 		state(fixedwaterlevelsensorState_t::undetermined)
 		{
-			this->type = waterlevelsensortype_t::optical;
+			this->type = waterlevelsensortype_t::WLS_optical;
 			this->subtype = waterlevelsensorsubtype_t::fixed;
+			this->interfacetype = sensorinterfacetype_t::gpio;
 		};
 
 	const float 					mountpositionGet(void);
