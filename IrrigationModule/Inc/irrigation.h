@@ -27,6 +27,13 @@ struct gpio_s{
 	uint16_t pin;
 };
 
+struct pumpstatus_s {
+	uint8_t id = 0;
+	uint32_t state = 0;
+	bool forced = false;
+	bool cmd_consumed = false;
+};
+
 enum pumpState_t: uint8_t{
 	init,
 	running,
@@ -102,7 +109,6 @@ private:
 	uint32_t idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
 	struct gpio_s pinout;
 	struct gpio_s led;
-	bool forced = false;
 
 	void 	runtimeReset(void);
 	void 	runtimeIncrease(const double & _dt);
@@ -125,8 +131,9 @@ public:
 	idletimeRequiredSeconds(0)
 	{};
 
+	struct pumpstatus_s status;
 
-	bool 	init(const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
+	bool 	init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
 	void 	run(const double & dt, const bool & _cmd_start, bool & cmd_consumed);
 	void 	stateSet(const pumpState_t & _st) override;
 	pumpState_t stateGet(void) override;
@@ -304,6 +311,10 @@ public:
 	bool 			temperatureSensorAdd(const temperaturesensortype_t & _sensortype);
 
 };
+
+void pumpStateEncode(struct pumpstatus_s _pump, uint32_t & bitmask);
+void pumpStateDecode(uint32_t bitmask);
+
 
 
 

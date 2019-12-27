@@ -26,7 +26,8 @@ void Pump::run(const double & _dt){
 /*! BinaryPump class implementation */
 /************************************/
 
-bool BinaryPump::init(const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led){
+bool BinaryPump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led){
+	this->status.id = _id;
 	this->pinout.pin = _pinout.pin;
 	this->pinout.port = _pinout.port;
 	this->led.pin = _led.pin;
@@ -75,7 +76,7 @@ void BinaryPump::run(const double & _dt, const bool & _cmd_start, bool & cmd_con
 		else{
 			if(this->stop() == true) cmd_consumed = true;
 		}
-		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->forced == false) this->stop();
+		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->status.forced == false) this->stop();
 		break;
 
 	default:
@@ -124,7 +125,7 @@ void BinaryPump::forcestart(void){
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
 	this->stateSet(pumpState_t::running);
-	this->forced = true;
+	this->status.forced = true;
 }
 void BinaryPump::forcestop(void){
 
@@ -133,7 +134,7 @@ void BinaryPump::forcestop(void){
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
 	this->stateSet(pumpState_t::stopped);
-	this->forced = true;
+	this->status.forced = true;
 }
 
 
@@ -143,6 +144,7 @@ pumpState_t BinaryPump::stateGet(void){
 
 void BinaryPump::stateSet(const pumpState_t & _state){
 	this->state = _state;
+	this->status.state = static_cast<uint32_t>(_state);
 }
 
 void BinaryPump::runtimeReset(void){
@@ -554,6 +556,42 @@ bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype
 	return success;
 }
 
+void pumpStateEncode(struct pumpstatus_s _pump, uint32_t & bitmask) {
+
+	uint32_t tmp=0;
+
+	switch (_pump.id)
+	{
+	case 0:
+		tmp = bitmask | _pump.state;
+		if (_pump.forced == true) 			tmp = bitmask | (1 << 6);
+		if (_pump.cmd_consumed == true) 	tmp = bitmask | (1 << 7);
+		break;
+	case 1:
+		tmp =  bitmask | _pump.state << 8;
+		if (_pump.forced == true) 			tmp = bitmask | (1 << 14);
+		if (_pump.cmd_consumed == true) 	tmp = bitmask | (1 << 15);
+		break;
+	case 2:
+		tmp = bitmask | (_pump.state << 16);
+		if (_pump.forced == true) 			tmp = bitmask | (1 << 22);
+		if (_pump.cmd_consumed == true) 	tmp = bitmask | (1 << 23);
+		break;
+	case 3:
+		tmp = bitmask | (_pump.state << 24);
+		if (_pump.forced == true) 			tmp = bitmask | (1 << 30);
+		if (_pump.cmd_consumed == true) 	tmp = bitmask | (1 << 31);
+		break;
+	default:
+		break;
+	}
+
+	bitmask = tmp;
+
+}
+void pumpStateDecode(uint32_t bitmask){
+
+}
 
 
 ///*! MoistureSensor template class implementation (Test only) */

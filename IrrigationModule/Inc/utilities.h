@@ -16,5 +16,4 @@ constexpr const T& clamp( const T& v, const T& lo, const T& hi )
 }
 
 
-
 #endif /* UTILITIES_H_ */

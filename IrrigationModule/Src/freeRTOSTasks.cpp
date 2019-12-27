@@ -12,6 +12,7 @@
 
 #include <freeRTOSTasks.h>
 #include <irrigation.h>
+#include <utilities.h>
 #include <plants.h>
 #include "gpio.h"
 #include "usart.h"
@@ -90,13 +91,13 @@ void vIrrigationControlTask( void *pvParameters )
 	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
 	BinaryPump *pump1 = new BinaryPump();
-	pump1->init(2, 5, pump1gpio, pump1led);
+	pump1->init(1, 2, 5, pump1gpio, pump1led);
 
 	BinaryPump *pump2 = new BinaryPump();
-	pump2->init(3, 10, pump2gpio, pump2led);
+	pump2->init(2, 3, 10, pump2gpio, pump2led);
 
 	BinaryPump *pump3 = new BinaryPump();
-	pump3->init(3, 10, pump3gpio, pump3led);
+	pump3->init(3, 3, 10, pump3gpio, pump3led);
 
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
 	tank1->init();
@@ -123,6 +124,10 @@ void vIrrigationControlTask( void *pvParameters )
     	tank1->checkStateOK(tank1Status);
     	tank1Status+=test_cnt;
     	xQueueOverwrite( tank1StatusQueue, &tank1Status);
+
+    	pumpStateEncode(pump1->status, pumpsStatus);
+    	pumpStateEncode(pump2->status, pumpsStatus);
+    	pumpStateEncode(pump3->status, pumpsStatus);
     	xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
 
     	if(test_cnt < 200)
@@ -156,8 +161,8 @@ void vStatusNotifyTask( void *pvParameters )
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
-	unsigned int tank1status = 0;
-	unsigned int pumpsstatus = 0;
+	uint32_t tank1status = 0;
+	uint32_t pumpsstatus = 0;
 	uint8_t message[] = "test\n";
 
     for( ;; )
@@ -168,7 +173,7 @@ void vStatusNotifyTask( void *pvParameters )
 		   {
 			   if(xQueueReceive( tank1StatusQueue, &tank1status, 1 ) == pdPASS || xQueueReceive( pumpsStatusQueue, &pumpsstatus, 1 ) == pdPASS)
 			   {
-				   sprintf((char*)message,"tank1: %d, pumps: %d\n",tank1status,pumpsstatus);
+				   sprintf((char*)message,"tank1: %d, pumps: %d\n",(unsigned int)tank1status,(unsigned int)pumpsstatus);
 				   HAL_UART_Transmit_DMA(&huart4,message,strlen((char*)message));
 				   HAL_UART_DMAResume(&huart4);
 				   LEDToggle(9);
