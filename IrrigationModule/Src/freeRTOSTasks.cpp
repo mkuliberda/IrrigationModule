@@ -16,11 +16,16 @@
 #include "gpio.h"
 #include "usart.h"
 #include "tim.h"
+#include <cstring>
 #include "main.h"
 
+#define TANK1STATUS_BUFFER_LENGTH 1
+#define PUMPSSTATUS_BUFFER_LENGTH 1
 
 SemaphoreHandle_t xUserButtonSemaphore = NULL;
 xQueueHandle tank1StatusQueue;
+xQueueHandle pumpsStatusQueue;
+
 
 
 void vLEDFlashTask( void *pvParameters )
@@ -65,9 +70,13 @@ void vIrrigationControlTask( void *pvParameters )
 
 	double dt_seconds = xFrequencySeconds/1000.0f;
 
+	tank1StatusQueue = xQueueCreate(TANK1STATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
+	pumpsStatusQueue = xQueueCreate(PUMPSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
+
 	const double tank1HeightMeters = 0.43;
 	const double tank1VolumeLiters = 5.0;
 	uint32_t tank1Status = 0;
+	uint32_t pumpsStatus = 0; //8 bits per pump
 
 	const struct gpio_s pump1gpio = {PUMP1_GPIO_Port, PUMP1_Pin};
 	const struct gpio_s pump1led  = {PUMP1LD_GPIO_Port, PUMP1LD_Pin};
@@ -112,6 +121,10 @@ void vIrrigationControlTask( void *pvParameters )
     for( ;; )
     {
     	tank1->checkStateOK(tank1Status);
+    	tank1Status+=test_cnt;
+    	xQueueOverwrite( tank1StatusQueue, &tank1Status);
+    	xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
+
     	if(test_cnt < 200)
     	{
     		test_cmd = true;
@@ -143,19 +156,26 @@ void vStatusNotifyTask( void *pvParameters )
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
-	uint8_t message[] = "test message\n";
+	unsigned int tank1status = 0;
+	unsigned int pumpsstatus = 0;
+	uint8_t message[] = "test\n";
 
     for( ;; )
     {
-        if(xUserButtonSemaphore != NULL)
-        {
-           if (xSemaphoreTake(xUserButtonSemaphore, (portTickType)2) == pdTRUE)
-           {
-        	   HAL_UART_Transmit_DMA(&huart4,message,13);
-        	   HAL_UART_DMAResume(&huart4);
-        	   LEDToggle(9);
-           }
-        }
+    	if(xUserButtonSemaphore != NULL)
+    	{
+		   if (xSemaphoreTake(xUserButtonSemaphore, (portTickType)2) == pdTRUE)
+		   {
+			   if(xQueueReceive( tank1StatusQueue, &tank1status, 1 ) == pdPASS || xQueueReceive( pumpsStatusQueue, &pumpsstatus, 1 ) == pdPASS)
+			   {
+				   sprintf((char*)message,"tank1: %d, pumps: %d\n",tank1status,pumpsstatus);
+				   HAL_UART_Transmit_DMA(&huart4,message,strlen((char*)message));
+				   HAL_UART_DMAResume(&huart4);
+				   LEDToggle(9);
+			   }
+		   }
+		}
+
         vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 
