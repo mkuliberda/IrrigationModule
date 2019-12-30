@@ -14,7 +14,7 @@ bool Pump::init(void){
 }
 
 bool Pump::isRunning(void){
-	return stateGet() == pumpState_t::running ? true : false;
+	return stateGet() == pumpstate_t::running ? true : false;
 }
 
 void Pump::run(const double & _dt){
@@ -36,7 +36,7 @@ bool BinaryPump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSec
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
-	this->stateSet(pumpState_t::stopped);
+	this->stateSet(pumpstate_t::stopped);
 
 	return this->isRunning();
 }
@@ -45,12 +45,12 @@ void BinaryPump::run(const double & _dt, const bool & _cmd_start, bool & cmd_con
 
 	switch (this->stateGet())
 	{
-	case pumpState_t::init:
+	case pumpstate_t::init:
 		this->stop();
 		cmd_consumed = true;
 		break;
 
-	case pumpState_t::waiting:
+	case pumpstate_t::waiting:
 		this->idletimeIncrease(_dt);
 		if(this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
 			if (this->start() == true ) cmd_consumed = true;
@@ -58,17 +58,17 @@ void BinaryPump::run(const double & _dt, const bool & _cmd_start, bool & cmd_con
 
 		break;
 
-	case pumpState_t::stopped:
+	case pumpstate_t::stopped:
 		this->idletimeIncrease(_dt);
 		if((_cmd_start == true) && (cmd_consumed == false) && (this->idletimeGetSeconds() > this->idletimeRequiredSeconds)){
 			if (this->start() == true ) cmd_consumed = true;
 		}
 		else if((_cmd_start == true) && (cmd_consumed == false) && (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds)){
-			this->stateSet(pumpState_t::waiting);
+			this->stateSet(pumpstate_t::waiting);
 		}
 		break;
 
-	case pumpState_t::running:
+	case pumpstate_t::running:
 		this->runtimeIncrease(_dt);
 		if(_cmd_start == true){
 			cmd_consumed = true;
@@ -92,7 +92,7 @@ bool BinaryPump::start(void){
 
 		HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
-		this->stateSet(pumpState_t::running);
+		this->stateSet(pumpstate_t::running);
 		this->idletimeReset();
 		this->runtimeReset();
 		success = true;
@@ -109,7 +109,7 @@ bool BinaryPump::stop(void){
 
 		HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
-		this->stateSet(pumpState_t::stopped);
+		this->stateSet(pumpstate_t::stopped);
 		this->idletimeReset();
 		this->runtimeReset();
 		success = true;
@@ -124,7 +124,7 @@ void BinaryPump::forcestart(void){
 
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
-	this->stateSet(pumpState_t::running);
+	this->stateSet(pumpstate_t::running);
 	this->status.forced = true;
 }
 void BinaryPump::forcestop(void){
@@ -133,16 +133,16 @@ void BinaryPump::forcestop(void){
 
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
-	this->stateSet(pumpState_t::stopped);
+	this->stateSet(pumpstate_t::stopped);
 	this->status.forced = true;
 }
 
 
-pumpState_t BinaryPump::stateGet(void){
+pumpstate_t BinaryPump::stateGet(void){
 	return this->state;
 }
 
-void BinaryPump::stateSet(const pumpState_t & _state){
+void BinaryPump::stateSet(const pumpstate_t & _state){
 	this->state = _state;
 	this->status.state = static_cast<uint32_t>(_state);
 }
@@ -168,6 +168,165 @@ void BinaryPump::idletimeIncrease(const double & _dt){
 }
 
 double BinaryPump::idletimeGetSeconds(void){
+	return this->idletimeSeconds;
+}
+
+/************************************/
+/*! DRV8833Pump class implementation */
+/************************************/
+
+bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
+		const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led, \
+		const struct gpio_s & _fault, const struct gpio_s & _mode){
+	this->status.id = _id;
+	this->aIN[0].pin = _pinout[0].pin;
+	this->aIN[0].port = _pinout[0].port;
+	this->aIN[1].pin = _pinout[1].pin;
+	this->aIN[1].port = _pinout[1].port;
+	this->aIN[2].pin = _pinout[2].pin;
+	this->aIN[2].port = _pinout[2].port;
+	this->aIN[3].pin = _pinout[3].pin;
+	this->aIN[3].port = _pinout[3].port;
+	this->fault.pin = _fault.pin;
+	this->fault.port = _fault.port;
+	this->mode.pin = _mode.pin;
+	this->mode.port = _mode.port;
+	this->led.pin = _led.pin;
+	this->led.port = _led.port;
+	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
+	this->runtimeLimitSeconds = _runtimeLimitSeconds;
+	//TODO: to implement, set stop here based on type dc/bldc
+	this->stateSet(pumpstate_t::stopped);
+
+	return this->isRunning();
+}
+
+bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
+		const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led, \
+		const struct gpio_s & _fault, const struct gpio_s & _mode){
+	this->status.id = _id;
+	this->aIN[0].pin = _pinout[0].pin;
+	this->aIN[0].port = _pinout[0].port;
+	this->aIN[1].pin = _pinout[1].pin;
+	this->aIN[1].port = _pinout[1].port;
+	this->aIN[2].pin = 0;
+	this->aIN[2].port = nullptr;
+	this->aIN[3].pin = 0;
+	this->aIN[3].port = nullptr;
+	this->fault.pin = _fault.pin;
+	this->fault.port = _fault.port;
+	this->mode.pin = _mode.pin;
+	this->mode.port = _mode.port;
+	this->led.pin = _led.pin;
+	this->led.port = _led.port;
+	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
+	this->runtimeLimitSeconds = _runtimeLimitSeconds;
+	//TODO: to implement, set stop here based on type dc/bldc
+	this->stateSet(pumpstate_t::stopped);
+
+	return this->isRunning();
+}
+
+void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed){
+
+}
+
+bool DRV8833Pump::start(void){
+
+	bool success = false;
+
+	if(this->isRunning() == false){
+
+		//TODO: to implement based on type, dc/bldc
+		this->stateSet(pumpstate_t::running);
+		this->idletimeReset();
+		this->runtimeReset();
+		success = true;
+	}
+
+	return success;
+}
+
+bool DRV8833Pump::stop(void){
+
+	bool success = false;
+
+	if(this->isRunning() == true){
+
+		//TODO: to implement based on type, dc/bldc
+		this->stateSet(pumpstate_t::stopped);
+		this->idletimeReset();
+		this->runtimeReset();
+		success = true;
+	}
+
+	return success;
+}
+
+bool DRV8833Pump::reverse(void){
+	//TODO: to implement based on type, dc/bldc
+}
+
+void DRV8833Pump::forcestart(void){
+
+	if(this->isRunning() == false) this->runtimeReset();
+
+	//TODO: to implement based on type, dc/bldc
+	this->stateSet(pumpstate_t::running);
+	this->status.forced = true;
+}
+void DRV8833Pump::forcestop(void){
+
+	if (this->isRunning() == true) this->idletimeReset();
+
+	//TODO: to implement based on type, dc/bldc
+	this->stateSet(pumpstate_t::stopped);
+	this->status.forced = true;
+}
+
+void DRV8833Pump::forcereverse(void){
+	//TODO: to implement based on type, dc/bldc
+}
+
+void DRV8833Pump::sleepmodeSet(void){
+	//TODO: to implement
+}
+bool DRV8833Pump::faultCheck(void){
+	//TODO: to implement
+	return 0;
+}
+
+
+pumpstate_t DRV8833Pump::stateGet(void){
+	return this->state;
+}
+
+void DRV8833Pump::stateSet(const pumpstate_t & _state){
+	this->state = _state;
+	this->status.state = static_cast<uint32_t>(_state);
+}
+
+void DRV8833Pump::runtimeReset(void){
+	this->runtimeSeconds = 0.0;
+}
+
+void DRV8833Pump::runtimeIncrease(const double & _dt){
+	this->runtimeSeconds += _dt;
+}
+
+double DRV8833Pump::runtimeGetSeconds(void){
+	return this->runtimeSeconds;
+}
+
+void DRV8833Pump::idletimeReset(void){
+	this->idletimeSeconds = 0.0;
+}
+
+void DRV8833Pump::idletimeIncrease(const double & _dt){
+	this->idletimeSeconds += _dt;
+}
+
+double DRV8833Pump::idletimeGetSeconds(void){
 	return this->idletimeSeconds;
 }
 
@@ -206,17 +365,17 @@ const float OpticalWaterLevelSensor::mountpositionGet(void){
 }
 
 void OpticalWaterLevelSensor::read(void){
-	if (HAL_GPIO_ReadPin(this->pinout.port, this->pinout.pin) == GPIO_PIN_SET) this->state = fixedwaterlevelsensorState_t::dry;
-	else this->state = fixedwaterlevelsensorState_t::wet;
+	if (HAL_GPIO_ReadPin(this->pinout.port, this->pinout.pin) == GPIO_PIN_SET) this->state = fixedwaterlevelsensorstate_t::dry;
+	else this->state = fixedwaterlevelsensorstate_t::wet;
 }
 
 bool OpticalWaterLevelSensor::isValid(void){
-	return this->state != fixedwaterlevelsensorState_t::undetermined ? true : false;
+	return this->state != fixedwaterlevelsensorstate_t::undetermined ? true : false;
 }
 
 bool OpticalWaterLevelSensor::isSubmersed(void){
 	this->read();
-	return this->state == fixedwaterlevelsensorState_t::wet ? true : false;
+	return this->state == fixedwaterlevelsensorstate_t::wet ? true : false;
 }
 
 /******************************************/
@@ -549,7 +708,7 @@ bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype
 		}
 		break;
 
-	case temperaturesensortype_t::generic:
+	case temperaturesensortype_t::temp_generic:
 		break;
 	}
 

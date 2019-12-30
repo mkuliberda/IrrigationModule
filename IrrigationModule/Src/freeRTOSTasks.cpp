@@ -91,16 +91,13 @@ void vIrrigationControlTask( void *pvParameters )
 	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
 	BinaryPump *pump1 = new BinaryPump();
-	pump1->init(1, 2, 5, pump1gpio, pump1led);
-	pump1->status.id = 0;
+	pump1->init(0, 2, 5, pump1gpio, pump1led);
 
 	BinaryPump *pump2 = new BinaryPump();
-	pump2->init(2, 3, 10, pump2gpio, pump2led);
-	pump2->status.id = 1;
+	pump2->init(1, 3, 10, pump2gpio, pump2led);
 
 	BinaryPump *pump3 = new BinaryPump();
-	pump3->init(3, 3, 10, pump3gpio, pump3led);
-	pump3->status.id=2;
+	pump3->init(2, 3, 10, pump3gpio, pump3led);
 
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
 	tank1->init();

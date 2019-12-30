@@ -34,14 +34,28 @@ struct pumpstatus_s {
 	bool cmd_consumed = false;
 };
 
-enum pumpState_t: uint8_t{
+enum pumpstate_t: uint8_t{
 	init,
 	running,
+	reversing,
 	stopped,
 	waiting
 };
 
-enum fixedwaterlevelsensorState_t: uint8_t{
+enum pumptype_t: uint8_t{
+	pump_generic,
+	binary,
+	drv8833_dc,
+	drv8833_bldc
+};
+
+enum pumpcmd_t: uint8_t{
+	start,
+	stop,
+	reverse
+};
+
+enum fixedwaterlevelsensorstate_t: uint8_t{
 	undetermined,
 	wet,
 	dry
@@ -70,7 +84,7 @@ enum sensorinterfacetype_t {
 };
 
 enum temperaturesensortype_t: uint8_t {
-	generic,
+	temp_generic,
 	ds18b20
 };
 
@@ -80,10 +94,11 @@ class Pump{
 
 protected:
 
-	pumpState_t state = pumpState_t::init;									///< current pump's working state based on enum pumpState_t
+	pumptype_t					type = pumptype_t::pump_generic;
+	pumpstate_t 				state = pumpstate_t::init;		///< current pump's working state based on enum pumpstate_t
 
-	virtual bool start() = 0;
-	virtual bool stop() = 0;
+	virtual bool 				start() = 0;
+	virtual bool 				stop() = 0;
 
 public:
 
@@ -92,10 +107,10 @@ public:
 	virtual ~Pump(){};
 
 	bool init();
-	virtual void run(const double & _dt);
-	virtual void stateSet(const pumpState_t & _st) = 0;
-	virtual pumpState_t stateGet(void) = 0;
-	virtual bool isRunning(void);
+	virtual void 				run(const double & _dt);
+	virtual void 				stateSet(const pumpstate_t & _st) = 0;
+	virtual pumpstate_t 		stateGet(void) = 0;
+	virtual bool 				isRunning(void);
 
 };
 
@@ -103,24 +118,24 @@ class BinaryPump: public Pump{
 
 private:
 
-	double runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
-	double idletimeSeconds;					///< current idletime incrementing in stopped and waiting state [seconds]
-	uint32_t runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
-	uint32_t idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
-	struct gpio_s pinout;
-	struct gpio_s led;
+	double 						runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
+	double 						idletimeSeconds;					///< current idletime incrementing in stopped and waiting state [seconds]
+	uint32_t 					runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
+	uint32_t 					idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
+	struct gpio_s 				pinout;
+	struct gpio_s 				led;
 
-	void 	runtimeReset(void);
-	void 	runtimeIncrease(const double & _dt);
-	double 	runtimeGetSeconds(void);
-	void 	idletimeReset(void);
-	void 	idletimeIncrease(const double & _dt);
-	double 	idletimeGetSeconds(void);
+	void 						runtimeReset(void);
+	void 						runtimeIncrease(const double & _dt);
+	double 						runtimeGetSeconds(void);
+	void 						idletimeReset(void);
+	void 						idletimeIncrease(const double & _dt);
+	double 						idletimeGetSeconds(void);
 
 protected:
-	bool 	start(void) override;
-	bool 	stop(void) override;
 
+	bool 						start(void) override;
+	bool 						stop(void) override;
 
 public:
 
@@ -129,19 +144,78 @@ public:
 	idletimeSeconds(0.0),
 	runtimeLimitSeconds(0),
 	idletimeRequiredSeconds(0)
-	{};
+	{
+		this->type=pumptype_t::binary;
+	};
 
-	struct pumpstatus_s status;
+	struct pumpstatus_s 		status;
 
-	bool 	init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
-	void 	run(const double & dt, const bool & _cmd_start, bool & cmd_consumed);
-	void 	stateSet(const pumpState_t & _st) override;
-	pumpState_t stateGet(void) override;
-	void forcestart(void);
-	void forcestop(void);
+	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
+	void 						run(const double & _dt, const bool & _cmd_start, bool & cmd_consumed);
+	void 						stateSet(const pumpstate_t & _st) override;
+	pumpstate_t 				stateGet(void) override;
+	void 						forcestart(void);
+	void 						forcestop(void);
 
 };
 
+class DRV8833Pump: public Pump{
+
+private:
+
+	double 						runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
+	double 						idletimeSeconds;				///< current idletime incrementing in stopped and waiting state [seconds]
+	uint32_t 					runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
+	uint32_t 					idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
+	array<struct gpio_s, 4> 	aIN;							///< in1, in2, in3, in4
+	struct gpio_s 				led;
+	struct gpio_s 				fault;
+	struct gpio_s 				mode;
+
+	void 						runtimeReset(void);
+	void 						runtimeIncrease(const double & _dt);
+	double 						runtimeGetSeconds(void);
+	void 						idletimeReset(void);
+	void 						idletimeIncrease(const double & _dt);
+	double 						idletimeGetSeconds(void);
+
+protected:
+
+	bool 						start(void) override;
+	bool 						stop(void) override;
+	bool						reverse(void);
+
+
+public:
+
+	DRV8833Pump(const pumptype_t & _type):
+	runtimeSeconds(0.0),
+	idletimeSeconds(0.0),
+	runtimeLimitSeconds(0),
+	idletimeRequiredSeconds(0)
+	{
+		if (_type == pumptype_t::drv8833_bldc || _type == pumptype_t::drv8833_dc) this->type = _type;
+		else this->type = pumptype_t::pump_generic; //TODO: print/assert error in this case
+	};
+
+	struct pumpstatus_s 		status;
+
+	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
+								const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led, \
+								const struct gpio_s & _fault, const struct gpio_s & _mode);
+	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
+								const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led, \
+								const struct gpio_s & _fault, const struct gpio_s & _mode);
+	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
+	void 						stateSet(const pumpstate_t & _st) override;
+	pumpstate_t 				stateGet(void) override;
+	void 						forcestart(void);
+	void 						forcereverse(void);
+	void 						forcestop(void);
+	void 						sleepmodeSet(void);
+	bool						faultCheck(void);
+
+};
 
 
 class WaterLevelSensor{
@@ -170,7 +244,7 @@ class OpticalWaterLevelSensor: public WaterLevelSensor{
 private:
 
 	float 							mountpositionMeters;
-	fixedwaterlevelsensorState_t 	state;
+	fixedwaterlevelsensorstate_t 	state;
 	struct gpio_s 					pinout;
 
 	void 							read(void);
@@ -179,7 +253,7 @@ public:
 
 	OpticalWaterLevelSensor():
 		mountpositionMeters(0),
-		state(fixedwaterlevelsensorState_t::undetermined)
+		state(fixedwaterlevelsensorstate_t::undetermined)
 		{
 			this->type = waterlevelsensortype_t::WLS_optical;
 			this->subtype = waterlevelsensorsubtype_t::fixed;
@@ -197,11 +271,11 @@ class TemperatureSensor{
 
 protected:
 
-	temperaturesensortype_t 			type;
-	sensorinterfacetype_t				interfacetype;
+	temperaturesensortype_t 		type;
+	sensorinterfacetype_t			interfacetype;
 
-	temperaturesensortype_t 	typeGet(void);
-	sensorinterfacetype_t 		interfacetypeGet(void);
+	temperaturesensortype_t 		typeGet(void);
+	sensorinterfacetype_t 			interfacetypeGet(void);
 
 public:
 
@@ -215,16 +289,16 @@ class DS18B20: public TemperatureSensor{
 
 private:
 
-	bool 					valid;
-	struct 					gpio_s gpio;
-	TIM_HandleTypeDef* 		timer;
+	bool 							valid;
+	struct gpio_s 					gpio;
+	TIM_HandleTypeDef* 				timer;
 
-	bool 					prep(void);
-	void 					delay_us (const uint32_t & _us);
-	void 					gpioSetInput (void);
-	void 					gpioSetOutput (void);
-	void 					write (const uint8_t & _data);
-	uint8_t 				read(void);
+	bool 							prep(void);
+	void 							delay_us (const uint32_t & _us);
+	void 							gpioSetInput (void);
+	void 							gpioSetOutput (void);
+	void 							write (const uint8_t & _data);
+	uint8_t 						read(void);
 
 public:
 
@@ -235,9 +309,9 @@ public:
 		this->type = temperaturesensortype_t::ds18b20;
 	};
 
-	bool 					init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle);
-	bool 					isValid(void);
-	float 					temperatureCelsiusRead(void);
+	bool 							init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle);
+	bool 							isValid(void);
+	float 							temperatureCelsiusRead(void);
 
 };
 
@@ -311,6 +385,38 @@ public:
 	bool 			temperatureSensorAdd(const temperaturesensortype_t & _sensortype);
 
 };
+
+//class pumpController{
+//
+//private:
+//
+//	const int8_t 						pumpsLimit;
+//	int8_t								pumpsCount;
+//	const int8_t						moisturesensorsLimit;
+//	int8_t								moisturesensorsCount;
+//
+//public:
+//
+//	pumpController():
+//		pumpsLimit(5),
+//		pumpsCount(0),
+//		moisturesensorsLimit(10),
+//		moisturesensorsCount(0)
+//	{};
+//
+//	~pumpController()
+//	{};
+//
+//	vector <BinaryPump>				vPump;
+//	vector <AnalogMoistureSensor> 	vMoistureSensor;
+//
+//	bool 							init(void);
+//	pumpstate_t 					pumpStateGet(void);
+//	bool							pumpAdd();
+//	uint8_t		 					moisturePercentGet(const uint8_t & _channel, const uint32_t & _dma_array);
+//	bool 							moistureSensorAdd(const moisturesensortype_t & _sensortype);
+//};
+
 
 
 
