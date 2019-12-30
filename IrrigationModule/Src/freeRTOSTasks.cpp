@@ -92,12 +92,15 @@ void vIrrigationControlTask( void *pvParameters )
 
 	BinaryPump *pump1 = new BinaryPump();
 	pump1->init(1, 2, 5, pump1gpio, pump1led);
+	pump1->status.id = 0;
 
 	BinaryPump *pump2 = new BinaryPump();
 	pump2->init(2, 3, 10, pump2gpio, pump2led);
+	pump2->status.id = 1;
 
 	BinaryPump *pump3 = new BinaryPump();
 	pump3->init(3, 3, 10, pump3gpio, pump3led);
+	pump3->status.id=2;
 
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
 	tank1->init();
@@ -161,9 +164,11 @@ void vStatusNotifyTask( void *pvParameters )
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
-	uint32_t tank1status = 0;
-	uint32_t pumpsstatus = 0;
+	uint32_t tank1Status = 0;
+	uint32_t pumpsStatus = 0;
 	uint8_t message[] = "test\n";
+	array<struct pumpstatus_s,4> a_pumpStatus;
+
 
     for( ;; )
     {
@@ -171,9 +176,10 @@ void vStatusNotifyTask( void *pvParameters )
     	{
 		   if (xSemaphoreTake(xUserButtonSemaphore, (portTickType)2) == pdTRUE)
 		   {
-			   if(xQueueReceive( tank1StatusQueue, &tank1status, 1 ) == pdPASS || xQueueReceive( pumpsStatusQueue, &pumpsstatus, 1 ) == pdPASS)
+			   if(xQueueReceive( tank1StatusQueue, &tank1Status, 1 ) == pdPASS || xQueueReceive( pumpsStatusQueue, &pumpsStatus, 1 ) == pdPASS)
 			   {
-				   sprintf((char*)message,"tank1: %d, pumps: %d\n",(unsigned int)tank1status,(unsigned int)pumpsstatus);
+				   pumpStateDecode(a_pumpStatus, pumpsStatus);
+				   sprintf((char*)message,"tank1: %d, pumps: %d\n",(unsigned int)tank1Status,(unsigned int)pumpsStatus);
 				   HAL_UART_Transmit_DMA(&huart4,message,strlen((char*)message));
 				   HAL_UART_DMAResume(&huart4);
 				   LEDToggle(9);

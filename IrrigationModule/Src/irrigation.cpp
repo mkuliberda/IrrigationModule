@@ -556,43 +556,52 @@ bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype
 	return success;
 }
 
-void pumpStateEncode(struct pumpstatus_s _pump, uint32_t & bitmask) {
-
-	uint32_t tmp=0;
+void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status) {
 
 	switch (_pump.id)
 	{
 	case 0:
-		tmp = bitmask | _pump.state;
-		if (_pump.forced == true) 			tmp = bitmask | (1 << 6);
-		if (_pump.cmd_consumed == true) 	tmp = bitmask | (1 << 7);
+		status |= _pump.state;
+		if (_pump.forced == true) 			status |= (1 << 6);
+		if (_pump.cmd_consumed == true) 	status |= (1 << 7);
 		break;
 	case 1:
-		tmp =  bitmask | _pump.state << 8;
-		if (_pump.forced == true) 			tmp = bitmask | (1 << 14);
-		if (_pump.cmd_consumed == true) 	tmp = bitmask | (1 << 15);
+		status |= _pump.state << 8;
+		if (_pump.forced == true) 			status |= (1 << 14);
+		if (_pump.cmd_consumed == true) 	status |= (1 << 15);
 		break;
 	case 2:
-		tmp = bitmask | (_pump.state << 16);
-		if (_pump.forced == true) 			tmp = bitmask | (1 << 22);
-		if (_pump.cmd_consumed == true) 	tmp = bitmask | (1 << 23);
+		status |= (_pump.state << 16);
+		if (_pump.forced == true) 			status |= (1 << 22);
+		if (_pump.cmd_consumed == true) 	status |= (1 << 23);
 		break;
 	case 3:
-		tmp = bitmask | (_pump.state << 24);
-		if (_pump.forced == true) 			tmp = bitmask | (1 << 30);
-		if (_pump.cmd_consumed == true) 	tmp = bitmask | (1 << 31);
+		status |= (_pump.state << 24);
+		if (_pump.forced == true) 			status |= (1 << 30);
+		if (_pump.cmd_consumed == true) 	status |= (1 << 31);
 		break;
 	default:
 		break;
 	}
 
-	bitmask = tmp;
-
-}
-void pumpStateDecode(uint32_t bitmask){
-
 }
 
+void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status) {
+
+	const bitset<32> pumpstatemask(0x0000000F);
+	bitset<32> tmp;
+
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		tmp = _status;
+		if(i>0) tmp >>= 8*i;
+		tmp &= pumpstatemask;
+		a_pump[i].id = i;
+		a_pump[i].state = tmp.to_ulong();
+		if (_status.test(6)) a_pump[i].forced = true;
+		if (_status.test(7)) a_pump[i].cmd_consumed = true;
+	}
+}
 
 ///*! MoistureSensor template class implementation (Test only) */
 //

@@ -312,8 +312,12 @@ public:
 
 };
 
-void pumpStateEncode(struct pumpstatus_s _pump, uint32_t & bitmask);
-void pumpStateDecode(uint32_t bitmask);
+
+
+
+
+void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);
+void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);
 
 
 
