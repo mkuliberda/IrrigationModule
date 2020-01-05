@@ -265,6 +265,7 @@ bool DRV8833Pump::stop(void){
 
 bool DRV8833Pump::reverse(void){
 	//TODO: to implement based on type, dc/bldc
+	return true;
 }
 
 void DRV8833Pump::forcestart(void){
@@ -761,6 +762,15 @@ void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _
 		if (_status.test(7)) a_pump[i].cmd_consumed = true;
 	}
 }
+
+moisturesensortype_t MoistureSensor::typeGet(void){
+	return this->type;
+}
+
+sensorinterfacetype_t MoistureSensor::interfacetypeGet(void){
+	return this->interfacetype;
+}
+
 
 ///*! MoistureSensor template class implementation (Test only) */
 //

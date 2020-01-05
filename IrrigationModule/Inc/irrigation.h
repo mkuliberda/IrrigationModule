@@ -88,6 +88,11 @@ enum temperaturesensortype_t: uint8_t {
 	ds18b20
 };
 
+enum moisturesensortype_t: uint8_t {
+	moist_generic,
+	moist_capacitive_noshield
+};
+
 using namespace std;
 
 class Pump{
@@ -426,26 +431,33 @@ void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);
 void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);
 
 
+//template <typename raw_measurement_type>
+class MoistureSensor{
+
+protected:
+
+	moisturesensortype_t 			type;
+	sensorinterfacetype_t			interfacetype;
+	uint32_t						moisture_reading_raw;
+
+	moisturesensortype_t 			typeGet(void);
+	sensorinterfacetype_t 			interfacetypeGet(void);
+	virtual float 					moisturePercentCalculate(void);
+
+public:
+
+	MoistureSensor(){
+		this->type = moisturesensortype_t::moist_generic;
+	};
+
+	virtual ~MoistureSensor(){};
+
+	virtual float		 			read(void);
+	virtual bool					isValid(void);
+
+};
 
 
-//class MoistureSensor{
-//
-//public:
-//
-//	MoistureSensor():
-//	moisture_reading_raw(0)
-//	{};
-//
-//	virtual ~MoistureSensor(){};
-//
-//	virtual uint8_t moistureCalculatePercent(void);
-//	template <typename T> void rawreadingSet(T & _moisture_reading_raw);
-//
-//	uint32_t moisture_reading_raw;
-//};
-//
-//
-//
 //class AnalogMoistureSensor: MoistureSensor{
 //
 //public:

@@ -62,6 +62,7 @@
 /* USER CODE END Includes */
 
 extern ADC_HandleTypeDef hadc1;
+extern uint32_t ADC1ConvertedValues[9];
 
 /* USER CODE BEGIN Private defines */
 
@@ -72,7 +73,8 @@ extern void _Error_Handler(char *, int);
 void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void ADC1_ReadAll(void);
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc);
 
 /* USER CODE END Prototypes */
 

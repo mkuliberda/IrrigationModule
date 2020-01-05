@@ -59,6 +59,7 @@
 
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
+uint32_t ADC1ConvertedValues[9];
 
 /* ADC1 init function */
 void MX_ADC1_Init(void)
@@ -78,7 +79,7 @@ void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_EXT_IT11;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = DISABLE;  //todo: check this
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
@@ -106,6 +107,19 @@ void MX_ADC1_Init(void)
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
+  }
+
+  HAL_ADC_MspInit(&hadc1);
+
+  if( HAL_ADC_Start(&hadc1) != HAL_OK)
+  { //TODO: check if regular conversion start is required or ADC DMA request is enough
+	  _Error_Handler(__FILE__, __LINE__);
+  }
+
+  // -- Enables ADC DMA request
+  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC1ConvertedValues, 9) != HAL_OK)
+  {
+	  _Error_Handler(__FILE__, __LINE__);
   }
 
 }
@@ -208,14 +222,8 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 } 
 
 /* USER CODE BEGIN 1 */
-void ADC1_ReadAll(void)
-{
-//	HAL_ADC_Start(&hadc1);
-//
-//	if(HAL_ADC_PollForConversion(&hadc1,200) == HAL_OK)
-//	{
-//		HAL_ADC_GetValue(&hadc1);
-//	}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 
 }
 
