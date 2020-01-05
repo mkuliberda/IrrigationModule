@@ -49,6 +49,11 @@ enum pumptype_t: uint8_t{
 	drv8833_bldc
 };
 
+enum motortype_t: uint8_t{
+	dc_motor,
+	bldc_motor
+};
+
 enum pumpcmd_t: uint8_t{
 	start,
 	stop,
@@ -169,8 +174,10 @@ class DRV8833Pump: public Pump{
 private:
 
 	double 						runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
+	double						revtimeSeconds;
 	double 						idletimeSeconds;				///< current idletime incrementing in stopped and waiting state [seconds]
 	uint32_t 					runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
+	uint32_t					revtimeLimitSeconds;
 	uint32_t 					idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
 	array<struct gpio_s, 4> 	aIN;							///< in1, in2, in3, in4
 	struct gpio_s 				led;
@@ -183,6 +190,10 @@ private:
 	void 						idletimeReset(void);
 	void 						idletimeIncrease(const double & _dt);
 	double 						idletimeGetSeconds(void);
+	void 						revtimeReset(void);
+	void 						revtimeIncrease(const double & _dt);
+	double 						revtimeGetSeconds(void);
+
 
 protected:
 
@@ -193,14 +204,14 @@ protected:
 
 public:
 
-	DRV8833Pump(const pumptype_t & _type):
+	DRV8833Pump(const motortype_t & _type):
 	runtimeSeconds(0.0),
 	idletimeSeconds(0.0),
 	runtimeLimitSeconds(0),
 	idletimeRequiredSeconds(0)
 	{
-		if (_type == pumptype_t::drv8833_bldc || _type == pumptype_t::drv8833_dc) this->type = _type;
-		else this->type = pumptype_t::pump_generic; //TODO: print/assert error in this case
+		if (_type == motortype_t::bldc_motor) this->type = pumptype_t::drv8833_bldc;
+		if (_type == motortype_t::dc_motor) this->type = pumptype_t::drv8833_dc;
 	};
 
 	struct pumpstatus_s 		status;

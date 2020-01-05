@@ -331,6 +331,18 @@ double DRV8833Pump::idletimeGetSeconds(void){
 	return this->idletimeSeconds;
 }
 
+void DRV8833Pump::revtimeReset(void){
+	this->revtimeSeconds = 0.0;
+}
+
+void DRV8833Pump::revtimeIncrease(const double & _dt){
+	this->revtimeSeconds += _dt;
+}
+
+double DRV8833Pump::revtimeGetSeconds(void){
+	return this->revtimeSeconds;
+}
+
 
 /******************************************/
 /*! WaterLevelSensor class implementation */

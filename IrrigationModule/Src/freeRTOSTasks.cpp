@@ -76,6 +76,8 @@ void vIrrigationControlTask( void *pvParameters )
 
 	const double tank1HeightMeters = 0.43;
 	const double tank1VolumeLiters = 5.0;
+	const float WLSensorHighPositionMeters = 0.12;
+	const float WLSensorLowPositionMeters = 0.38;
 	uint32_t tank1Status = 0;
 	uint32_t pumpsStatus = 0; //8 bits per pump
 
@@ -105,8 +107,8 @@ void vIrrigationControlTask( void *pvParameters )
 	tank1->waterlevelSensorAdd(waterlevelsensortype_t::WLS_optical);
 	tank1->temperatureSensorAdd(temperaturesensortype_t::ds18b20);
 
-	tank1->vOpticalWLSensors[0].init(0.43, opticalwaterlevelsensor1gpio);
-	tank1->vOpticalWLSensors[1].init(0.12, opticalwaterlevelsensor2gpio);
+	tank1->vOpticalWLSensors[0].init(WLSensorHighPositionMeters, opticalwaterlevelsensor1gpio);
+	tank1->vOpticalWLSensors[1].init(WLSensorLowPositionMeters, opticalwaterlevelsensor2gpio);
 	tank1->vTemperatureSensors[0].init(ds18b20gpio, &htim7);
 
 	//Plant *plant1 = new Plant("Pelargonia");
