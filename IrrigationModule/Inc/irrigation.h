@@ -424,7 +424,7 @@ public:
 //	{};
 //
 //	vector <BinaryPump>				vPump;
-//	vector <AnalogMoistureSensor> 	vMoistureSensor;
+//	vector <AnalogDMAMoistureSensor> 	vMoistureSensor;
 //
 //	bool 							init(void);
 //	pumpstate_t 					pumpStateGet(void);
@@ -435,11 +435,8 @@ public:
 
 
 
-
-
-
-void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);
-void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);
+void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);					//TODO: maybe move to PumpController class
+void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);	//TODO: maybe move to PumpController class
 
 
 //template <typename raw_measurement_type>
@@ -449,41 +446,58 @@ protected:
 
 	moisturesensortype_t 			type;
 	sensorinterfacetype_t			interfacetype;
-	uint32_t						moisture_reading_raw;
+	float 							moisturePercent;
+	bool							valid;
 
 	moisturesensortype_t 			typeGet(void);
 	sensorinterfacetype_t 			interfacetypeGet(void);
-	virtual float 					moisturePercentCalculate(void);
+	virtual void 					percentUpdate(void) = 0;
 
 public:
 
-	MoistureSensor(){
+	MoistureSensor():
+	moisturePercent(0),
+	valid(false)
+	{
 		this->type = moisturesensortype_t::moist_generic;
 	};
 
 	virtual ~MoistureSensor(){};
 
-	virtual float		 			read(void);
-	virtual bool					isValid(void);
+	virtual float		 			read(void) = 0;
+	virtual bool					isValid(void) = 0;
+	float							percentGet(void);
 
 };
 
 
-//class AnalogMoistureSensor: MoistureSensor{
-//
-//public:
-//
-//	AnalogMoistureSensor():
-//	moisture_percent(0)
-//	{};
-//
-//	~AnalogMoistureSensor(){};
-//
-//	uint8_t moistureCalculatePercent(void);
-//
-//private:
-//	uint8_t moisture_percent;
-//};
+class AnalogDMAMoistureSensor: MoistureSensor{
+
+private:
+
+	uint32_t						moistureRaw;
+	float							moistureVolts;
+
+	void		 					percentUpdate(void);
+	void 							voltsUpdate(void);
+
+public:
+
+	AnalogDMAMoistureSensor():
+	moistureRaw(0),
+	moistureVolts(0)
+	{
+		this->interfacetype = sensorinterfacetype_t::analog;
+	};
+
+	~AnalogDMAMoistureSensor(){};
+
+	float		 					read(void);
+	bool							isValid(void);
+	void							update(const uint32_t & _raw_value);
+	float							voltsGet(void);
+
+};
 
 
 

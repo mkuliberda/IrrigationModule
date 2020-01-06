@@ -775,12 +775,47 @@ void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _
 	}
 }
 
+
+
+
+
 moisturesensortype_t MoistureSensor::typeGet(void){
 	return this->type;
 }
 
 sensorinterfacetype_t MoistureSensor::interfacetypeGet(void){
 	return this->interfacetype;
+}
+
+float MoistureSensor::percentGet(void){
+	return this->moisturePercent;
+}
+
+
+void AnalogDMAMoistureSensor::voltsUpdate(void){
+	this->moistureVolts = this->moistureRaw * 3.0f/4095.0f;
+}
+
+void AnalogDMAMoistureSensor::percentUpdate(void){
+	this->moisturePercent = this->moistureRaw * 100.0f/4095.0f;
+}
+
+float AnalogDMAMoistureSensor::read(void){
+	return 0; //Not used in this type of sensor
+}
+
+bool AnalogDMAMoistureSensor::isValid(void){
+	return this->valid;
+}
+
+void AnalogDMAMoistureSensor::update(const uint32_t & _raw_value){
+	this->moistureRaw = _raw_value;
+	this->percentUpdate();
+	this->voltsUpdate();
+}
+
+float AnalogDMAMoistureSensor::voltsGet(void){
+	return this->moistureVolts;
 }
 
 
