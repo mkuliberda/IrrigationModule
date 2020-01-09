@@ -680,7 +680,7 @@ uint8_t WaterTank::waterlevelPercentGet(void){
 
 bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 
-	bool success = false;
+	bool success = true;
 
 	switch (_sensortype)
 	{
@@ -690,16 +690,24 @@ bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 			OpticalWaterLevelSensor temp_sensor;
 			this->vOpticalWLSensors.push_back(temp_sensor);
 			this->waterlevelSensorsCount++;
-			success = true;
+		}
+		else
+		{
+			success = false;
 		}
 		break;
 
 	case waterlevelsensortype_t::WLS_capacitive:
+		success = false;
 		break;
 
 	case waterlevelsensortype_t::WLS_resistive:
+		success = false;
 		break;
 
+	default:
+		success = false;
+		break;
 	}
 
 	return success;
@@ -707,7 +715,7 @@ bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 
 bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype){
 
-	bool success = false;
+	bool success = true;
 
 	switch (_sensortype)
 	{
@@ -717,11 +725,19 @@ bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype
 			DS18B20 temp_sensor;
 			this->vTemperatureSensors.push_back(temp_sensor);
 			this->temperatureSensorsCount++;
-			success = true;
+		}
+		else
+		{
+			success = false;
 		}
 		break;
 
 	case temperaturesensortype_t::temp_generic:
+		success = false;
+		break;
+
+	default:
+		success = false;
 		break;
 	}
 
@@ -776,8 +792,99 @@ void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _
 }
 
 
+bool pumpController::init(void){
+	return true;
+}
 
+uint8_t pumpController::update(const double & _dt){
+	uint8_t errcode = 0;
+	return  errcode;
+}
 
+bool pumpController::pumpAdd(const pumptype_t & _pumptype){
+
+	bool success = true;
+
+	switch(_pumptype){
+	case pumptype_t::binary:
+		if (this->pumpsCount < (this->pumpsLimit+1))
+		{
+			BinaryPump temp_pump;
+			this->vBinPump.push_back(temp_pump);
+			this->pumpsCount++;
+		}
+		else
+		{
+			success = false;
+		}
+		break;
+
+	case pumptype_t::pump_generic:
+		success = false;
+		break;
+
+	case pumptype_t::drv8833_dc:
+		if (this->pumpsCount < (this->pumpsLimit+1))
+		{
+			DRV8833Pump temp_pump(motortype_t::dc_motor);
+			this->v8833Pump.push_back(temp_pump);
+			this->pumpsCount++;
+		}
+		else
+		{
+			success = false;
+		}
+		break;
+
+	case pumptype_t::drv8833_bldc:
+		if (this->pumpsCount < (this->pumpsLimit+1))
+		{
+			DRV8833Pump temp_pump(motortype_t::bldc_motor);
+			this->v8833Pump.push_back(temp_pump);
+			this->pumpsCount++;
+		}
+		else
+		{
+			success = false;
+		}
+		break;
+
+	default:
+		success = false;
+		break;
+	}
+
+	return success;
+}
+
+bool pumpController::moisturesensorAdd(const moisturesensortype_t & _sensortype){
+	bool success = true;
+
+	switch(_sensortype){
+	case moisturesensortype_t::moist_generic:
+		success = false;
+		break;
+
+	case moisturesensortype_t::moist_capacitive_noshield:
+		if (this->moisturesensorsCount < (this->moisturesensorsLimit+1))
+		{
+			AnalogDMAMoistureSensor temp_sensor;
+			this->vMoistureSensor.push_back(temp_sensor);
+			this->moisturesensorsCount++;
+		}
+		else
+		{
+			success = false;
+		}
+		break;
+
+	default:
+		success = false;
+		break;
+	}
+
+	return success;
+}
 
 moisturesensortype_t MoistureSensor::typeGet(void){
 	return this->type;

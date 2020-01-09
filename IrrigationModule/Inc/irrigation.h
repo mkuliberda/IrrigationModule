@@ -98,6 +98,12 @@ enum moisturesensortype_t: uint8_t {
 	moist_capacitive_noshield
 };
 
+enum pumpcontrollermode_t: uint8_t {
+	auto_mode,
+	manual_mode,
+	semiauto_mode
+};
+
 using namespace std;
 
 class Pump{
@@ -233,6 +239,64 @@ public:
 
 };
 
+class MoistureSensor{
+
+protected:
+
+	moisturesensortype_t 			type;
+	sensorinterfacetype_t			interfacetype;
+	float 							moisturePercent;
+	bool							valid;
+
+	moisturesensortype_t 			typeGet(void);
+	sensorinterfacetype_t 			interfacetypeGet(void);
+	virtual void 					percentUpdate(void) = 0;
+
+public:
+
+	MoistureSensor():
+	moisturePercent(0),
+	valid(false)
+	{
+		this->type = moisturesensortype_t::moist_generic;
+	};
+
+	virtual ~MoistureSensor(){};
+
+	virtual float		 			read(void) = 0;
+	virtual bool					isValid(void) = 0;
+	float							percentGet(void);
+
+};
+
+
+class AnalogDMAMoistureSensor: MoistureSensor{
+
+private:
+
+	uint32_t						moistureRaw;
+	float							moistureVolts;
+
+	void		 					percentUpdate(void);
+	void 							voltsUpdate(void);
+
+public:
+
+	AnalogDMAMoistureSensor():
+	moistureRaw(0),
+	moistureVolts(0)
+	{
+		this->interfacetype = sensorinterfacetype_t::analog;
+	};
+
+	~AnalogDMAMoistureSensor(){};
+
+	float		 					read(void);
+	bool							isValid(void);
+	void							rawUpdate(const uint32_t & _raw_value);
+	float							voltsGet(void);
+
+};
 
 class WaterLevelSensor{
 
@@ -357,21 +421,21 @@ private:
 		full 		= 100
 	};
 
-	float			mean_watertemperatureCelsius;
-	contentlevel_t	waterlevel;
-	contentstate_t 	waterstate;
-	const double 	tankheightMeters;
-	const double 	tankvolumeLiters;
-	const int8_t 	waterlevelSensorsLimit;
-	int8_t			waterlevelSensorsCount;
-	const int8_t 	temperatureSensorsLimit;
-	int8_t			temperatureSensorsCount;
+	float								mean_watertemperatureCelsius;
+	contentlevel_t						waterlevel;
+	contentstate_t 						waterstate;
+	const double 						tankheightMeters;
+	const double 						tankvolumeLiters;
+	const int8_t 						waterlevelSensorsLimit;
+	int8_t								waterlevelSensorsCount;
+	const int8_t 						temperatureSensorsLimit;
+	int8_t								temperatureSensorsCount;
 
-	void 			waterlevelSet(const contentlevel_t & _waterlevel);
-	contentlevel_t 	waterlevelGet(void);
-	void 			stateSet(const contentstate_t & _waterstate);
-	contentstate_t 	stateGet(void);
-	uint8_t 		waterlevelConvertToPercent(const float & _valMeters);
+	void 								waterlevelSet(const contentlevel_t & _waterlevel);
+	contentlevel_t 						waterlevelGet(void);
+	void 								stateSet(const contentstate_t & _waterstate);
+	contentstate_t 						stateGet(void);
+	uint8_t 							waterlevelConvertToPercent(const float & _valMeters);
 
 public:
 
@@ -393,111 +457,53 @@ public:
 	vector <OpticalWaterLevelSensor> 	vOpticalWLSensors;
 	vector <DS18B20> 					vTemperatureSensors;
 
-	bool 			init(void);
-	bool 			checkStateOK(uint32_t & errcodeBitmask);
-	float 			temperatureCelsiusGet(void);
-	uint8_t		 	waterlevelPercentGet(void);
-	bool 			waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype);
-	bool 			temperatureSensorAdd(const temperaturesensortype_t & _sensortype);
+	bool 								init(void);
+	bool 								checkStateOK(uint32_t & errcodeBitmask);
+	float 								temperatureCelsiusGet(void);
+	uint8_t		 						waterlevelPercentGet(void);
+	bool 								waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype);
+	bool 								temperatureSensorAdd(const temperaturesensortype_t & _sensortype);
 
 };
 
-//class pumpController{
-//
-//private:
-//
-//	const int8_t 						pumpsLimit;
-//	int8_t								pumpsCount;
-//	const int8_t						moisturesensorsLimit;
-//	int8_t								moisturesensorsCount;
-//
-//public:
-//
-//	pumpController():
-//		pumpsLimit(5),
-//		pumpsCount(0),
-//		moisturesensorsLimit(10),
-//		moisturesensorsCount(0)
-//	{};
-//
-//	~pumpController()
-//	{};
-//
-//	vector <BinaryPump>				vPump;
-//	vector <AnalogDMAMoistureSensor> 	vMoistureSensor;
-//
-//	bool 							init(void);
-//	pumpstate_t 					pumpStateGet(void);
-//	bool							pumpAdd();
-//	uint8_t		 					moisturePercentGet(const uint8_t & _channel, const uint32_t & _dma_array);
-//	bool 							moistureSensorAdd(const moisturesensortype_t & _sensortype);
-//};
+class pumpController{
+
+private:
+
+	const int8_t 						pumpsLimit;
+	int8_t								pumpsCount;
+	const int8_t						moisturesensorsLimit;
+	int8_t								moisturesensorsCount;
+	pumpcontrollermode_t				mode;
+
+public:
+
+	pumpController():
+		pumpsLimit(5),
+		pumpsCount(0),
+		moisturesensorsLimit(10),
+		moisturesensorsCount(0),
+		mode(pumpcontrollermode_t::auto_mode)
+	{};
+
+	~pumpController()
+	{};
+
+	vector <BinaryPump>					vBinPump;
+	vector <DRV8833Pump>				v8833Pump;
+	vector <AnalogDMAMoistureSensor> 	vMoistureSensor;
+
+	bool								init(void);
+	uint8_t								update(const double & _dt);
+	bool								pumpAdd(const pumptype_t & _pumptype);
+	bool 								moisturesensorAdd(const moisturesensortype_t & _sensortype);
+
+};
 
 
 
 void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);					//TODO: maybe move to PumpController class
 void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);	//TODO: maybe move to PumpController class
-
-
-//template <typename raw_measurement_type>
-class MoistureSensor{
-
-protected:
-
-	moisturesensortype_t 			type;
-	sensorinterfacetype_t			interfacetype;
-	float 							moisturePercent;
-	bool							valid;
-
-	moisturesensortype_t 			typeGet(void);
-	sensorinterfacetype_t 			interfacetypeGet(void);
-	virtual void 					percentUpdate(void) = 0;
-
-public:
-
-	MoistureSensor():
-	moisturePercent(0),
-	valid(false)
-	{
-		this->type = moisturesensortype_t::moist_generic;
-	};
-
-	virtual ~MoistureSensor(){};
-
-	virtual float		 			read(void) = 0;
-	virtual bool					isValid(void) = 0;
-	float							percentGet(void);
-
-};
-
-
-class AnalogDMAMoistureSensor: MoistureSensor{
-
-private:
-
-	uint32_t						moistureRaw;
-	float							moistureVolts;
-
-	void		 					percentUpdate(void);
-	void 							voltsUpdate(void);
-
-public:
-
-	AnalogDMAMoistureSensor():
-	moistureRaw(0),
-	moistureVolts(0)
-	{
-		this->interfacetype = sensorinterfacetype_t::analog;
-	};
-
-	~AnalogDMAMoistureSensor(){};
-
-	float		 					read(void);
-	bool							isValid(void);
-	void							rawUpdate(const uint32_t & _raw_value);
-	float							voltsGet(void);
-
-};
 
 
 
