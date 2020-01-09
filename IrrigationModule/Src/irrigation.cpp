@@ -808,7 +808,7 @@ bool AnalogDMAMoistureSensor::isValid(void){
 	return this->valid;
 }
 
-void AnalogDMAMoistureSensor::update(const uint32_t & _raw_value){
+void AnalogDMAMoistureSensor::rawUpdate(const uint32_t & _raw_value){
 	this->moistureRaw = _raw_value;
 	this->percentUpdate();
 	this->voltsUpdate();

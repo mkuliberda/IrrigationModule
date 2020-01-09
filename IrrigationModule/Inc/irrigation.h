@@ -494,7 +494,7 @@ public:
 
 	float		 					read(void);
 	bool							isValid(void);
-	void							update(const uint32_t & _raw_value);
+	void							rawUpdate(const uint32_t & _raw_value);
 	float							voltsGet(void);
 
 };
