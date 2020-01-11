@@ -111,10 +111,6 @@ void vIrrigationControlTask( void *pvParameters )
 	tank1->vOpticalWLSensors[1].init(WLSensorLowPositionMeters, opticalwaterlevelsensor2gpio);
 	tank1->vTemperatureSensors[0].init(ds18b20gpio, &htim7);
 
-	//Plant *plant1 = new Plant("Pelargonia");
-	//Plant *plant2 = new Plant("Surfinia");
-	//Plant *plant3 = new Plant("Trawa");
-
 	bool test_cmd = true;
 	bool cmd_consumed = false;
 	uint32_t test_cnt = 0;

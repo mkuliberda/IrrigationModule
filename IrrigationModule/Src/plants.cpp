@@ -2,15 +2,36 @@
 #include <plants.h>
 
 
+/***********************************/
+/*! Plants class implementation */
+/***********************************/
 
-void Plant::moistureSetPercent(uint8_t _moisture){
-	this->moisture = _moisture;
+void Plant::moisturePercentSet(const float & _soilmoisture){
+	this->soilMoisture = _soilmoisture;
 }
 
-uint8_t Plant::moistureGetPercent(void){
-	return this->moisture;
+float Plant::moisturePercentGet(void){
+	return this->soilMoisture;
 }
 
-string Plant::nameGet(void){
+string& Plant::nameGet(void){
 	return this->name;
 }
+
+/***********************************/
+/*! PlantsGroup class implementation */
+/***********************************/
+
+const uint8_t& PlantsGroup:: sectorGet(void){
+	return this->sector;
+}
+
+bool PlantsGroup::plantAdd(const string & _name){
+	bool success = true;
+	return success;
+}
+
+bool update(const double & _dt){
+	return true;
+}
+
