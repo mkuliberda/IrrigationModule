@@ -466,7 +466,7 @@ public:
 
 };
 
-class pumpController{
+class PumpController{
 
 private:
 
@@ -478,7 +478,7 @@ private:
 
 public:
 
-	pumpController():
+	PumpController():
 		pumpsLimit(5),
 		pumpsCount(0),
 		moisturesensorsLimit(10),
@@ -486,7 +486,7 @@ public:
 		mode(pumpcontrollermode_t::auto_mode)
 	{};
 
-	~pumpController()
+	~PumpController()
 	{};
 
 	vector <BinaryPump>					vBinPump;

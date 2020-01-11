@@ -744,7 +744,9 @@ bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype
 	return success;
 }
 
-
+/***********************************/
+/*! MoistureSensor class implementation */
+/***********************************/
 
 moisturesensortype_t MoistureSensor::typeGet(void){
 	return this->type;
@@ -758,6 +760,9 @@ float MoistureSensor::percentGet(void){
 	return this->moisturePercent;
 }
 
+/***********************************/
+/*! AnalogDMAMoistureSensor class implementation */
+/***********************************/
 
 void AnalogDMAMoistureSensor::voltsUpdate(void){
 	this->moistureVolts = this->moistureRaw * 3.0f/4095.0f;
@@ -785,19 +790,22 @@ float AnalogDMAMoistureSensor::voltsGet(void){
 	return this->moistureVolts;
 }
 
+/***********************************/
+/*! PumpController class implementation */
+/***********************************/
 
-bool pumpController::init(void){
+bool PumpController::init(void){
 	//TODO: implement this
 	return true;
 }
 
-uint8_t pumpController::update(const double & _dt){
+uint8_t PumpController::update(const double & _dt){
 	//TODO: implement this
 	uint8_t errcode = 0;
 	return  errcode;
 }
 
-bool pumpController::pumpAdd(const pumptype_t & _pumptype){
+bool PumpController::pumpAdd(const pumptype_t & _pumptype){
 
 	bool success = true;
 
@@ -853,7 +861,7 @@ bool pumpController::pumpAdd(const pumptype_t & _pumptype){
 	return success;
 }
 
-bool pumpController::moisturesensorAdd(const moisturesensortype_t & _sensortype){
+bool PumpController::moisturesensorAdd(const moisturesensortype_t & _sensortype){
 	bool success = true;
 
 	switch(_sensortype){
