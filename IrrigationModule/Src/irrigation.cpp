@@ -678,7 +678,7 @@ uint8_t WaterTank::waterlevelPercentGet(void){
 	return static_cast<uint8_t>(this->waterlevel);
 }
 
-bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
+bool WaterTank::waterlevelSensorCreate(const waterlevelsensortype_t & _sensortype){
 
 	bool success = true;
 
@@ -713,7 +713,7 @@ bool WaterTank::waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype){
 	return success;
 }
 
-bool WaterTank::temperatureSensorAdd(const temperaturesensortype_t & _sensortype){
+bool WaterTank::temperatureSensorCreate(const temperaturesensortype_t & _sensortype){
 
 	bool success = true;
 
@@ -805,7 +805,7 @@ uint8_t PumpController::update(const double & _dt){
 	return  errcode;
 }
 
-bool PumpController::pumpAdd(const pumptype_t & _pumptype){
+bool PumpController::pumpCreate(const pumptype_t & _pumptype){
 
 	bool success = true;
 
@@ -861,7 +861,7 @@ bool PumpController::pumpAdd(const pumptype_t & _pumptype){
 	return success;
 }
 
-bool PumpController::moisturesensorAdd(const moisturesensortype_t & _sensortype){
+bool PumpController::moisturesensorCreate(const moisturesensortype_t & _sensortype){
 	bool success = true;
 
 	switch(_sensortype){
@@ -889,6 +889,24 @@ bool PumpController::moisturesensorAdd(const moisturesensortype_t & _sensortype)
 
 	return success;
 }
+
+bool PumpController::modeSet(const pumpcontrollermode_t & _mode){
+
+	bool success = true;
+
+	if (this->mode != _mode)
+	{
+		this->mode = _mode;
+	}
+	else success = false;
+
+	return success;
+}
+
+const pumpcontrollermode_t&	PumpController::modeGet(void){
+	return this->mode;
+}
+
 
 void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status) {
 

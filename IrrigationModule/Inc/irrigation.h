@@ -101,7 +101,8 @@ enum moisturesensortype_t: uint8_t {
 enum pumpcontrollermode_t: uint8_t {
 	auto_mode,
 	manual_mode,
-	semiauto_mode
+	external_mode,
+	sleep_mode
 };
 
 using namespace std;
@@ -461,8 +462,8 @@ public:
 	bool 								checkStateOK(uint32_t & errcodeBitmask);
 	float 								temperatureCelsiusGet(void);
 	uint8_t		 						waterlevelPercentGet(void);
-	bool 								waterlevelSensorAdd(const waterlevelsensortype_t & _sensortype);
-	bool 								temperatureSensorAdd(const temperaturesensortype_t & _sensortype);
+	bool 								waterlevelSensorCreate(const waterlevelsensortype_t & _sensortype);
+	bool 								temperatureSensorCreate(const temperaturesensortype_t & _sensortype);
 
 };
 
@@ -483,7 +484,7 @@ public:
 		pumpsCount(0),
 		moisturesensorsLimit(10),
 		moisturesensorsCount(0),
-		mode(pumpcontrollermode_t::auto_mode)
+		mode(pumpcontrollermode_t::sleep_mode)
 	{};
 
 	~PumpController()
@@ -495,8 +496,10 @@ public:
 
 	bool								init(void);
 	uint8_t								update(const double & _dt);
-	bool								pumpAdd(const pumptype_t & _pumptype);
-	bool 								moisturesensorAdd(const moisturesensortype_t & _sensortype);
+	bool								pumpCreate(const pumptype_t & _pumptype);
+	bool 								moisturesensorCreate(const moisturesensortype_t & _sensortype);
+	bool								modeSet(const pumpcontrollermode_t & _mode);
+	const pumpcontrollermode_t&			modeGet(void);
 
 };
 

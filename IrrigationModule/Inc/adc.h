@@ -62,7 +62,8 @@
 /* USER CODE END Includes */
 
 extern ADC_HandleTypeDef hadc1;
-extern uint32_t ADC1ConvertedValues[9];
+extern DMA_HandleTypeDef hdma_adc1;
+extern uint16_t ADC1ConvertedValues[9];
 
 /* USER CODE BEGIN Private defines */
 
@@ -75,6 +76,7 @@ void MX_ADC1_Init(void);
 /* USER CODE BEGIN Prototypes */
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc);
+void ADC1_Start(void);
 
 /* USER CODE END Prototypes */
 

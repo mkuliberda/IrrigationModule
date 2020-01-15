@@ -26,12 +26,22 @@ const uint8_t& PlantsGroup:: sectorGet(void){
 	return this->sector;
 }
 
-bool PlantsGroup::plantAdd(const string & _name){
+bool PlantsGroup::plantCreate(const string & _name){
+
 	bool success = true;
+
+	if (this->plantsCount < (this->plantsCountMax + 1))
+	{
+		Plant temp_plant(_name);
+		this->vPlants.push_back(temp_plant);
+		this->plantsCount++;
+	}
+	else
+	{
+		success = false;
+	}
+
 	return success;
 }
 
-bool update(const double & _dt){
-	return true;
-}
 

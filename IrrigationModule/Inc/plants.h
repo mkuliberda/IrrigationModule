@@ -38,7 +38,7 @@ public:
 	soilMoisture(0)
 	{};
 
-	~Plant();
+	~Plant(){};
 
 	void moisturePercentSet(const float & _soilmoisture);
 	float moisturePercentGet(void);
@@ -51,8 +51,8 @@ class PlantsGroup{
 private:
 
 	const uint8_t sector;
-	const uint8_t plantsAmountMax = 20;
-	uint8_t plantsAmountCount;
+	const uint8_t plantsCountMax = 20;
+	uint8_t plantsCount;
 	vector<Plant> vPlants;
 
 public:
@@ -61,7 +61,7 @@ public:
 
 	PlantsGroup(const uint8_t & _sector):
 	sector(_sector),
-	plantsAmountCount(0)
+	plantsCount(0)
 	{
 		irrigationController = new PumpController();
 	};
@@ -71,8 +71,7 @@ public:
 	}
 
 	const uint8_t& sectorGet(void);
-	bool plantAdd(const string & _name);
-	bool update(const double & _dt);
+	bool plantCreate(const string & _name);
 
 };
 
