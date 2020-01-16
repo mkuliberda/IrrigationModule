@@ -169,6 +169,9 @@ void vIrrigationControlTask( void *pvParameters )
 
     	for (uint8_t i=0; i<9;i++) xQueueReceive(ADCValuesQueue, &adcValues[i], 5);
 
+
+
+    	//-----------test/development part only, to be deleted in final version----------
     	if(test_cnt < 200)
     	{
     		test_cmd = true;
@@ -186,6 +189,11 @@ void vIrrigationControlTask( void *pvParameters )
     		test_cnt = 0;
 		}
     	test_cnt++;
+    	//------------------------------------------------------------------------------
+
+
+
+
     	LEDToggle(6);
 		vTaskDelayUntil(&xLastWakeTime, xFrequencySeconds);
     }
