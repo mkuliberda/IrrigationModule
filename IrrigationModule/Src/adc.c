@@ -60,6 +60,7 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 uint16_t ADC1ConvertedValues[9];
+xQueueHandle ADCValuesQueue;
 
 /* ADC1 init function */
 void MX_ADC1_Init(void)
@@ -79,8 +80,8 @@ void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_CC1;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 9;
-  hadc1.Init.DMAContinuousRequests = ENABLE;  //todo: check this
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;//ADC_EOC_SEQ_CONV;//ADC_EOC_SINGLE_CONV;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -201,10 +202,10 @@ void MX_ADC1_Init(void)
   HAL_ADC_MspInit(&hadc1);
 
   // -- Enables ADC DMA request
-  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC1ConvertedValues, 9) != HAL_OK)
-  {
-	  _Error_Handler(__FILE__, __LINE__);
-  }
+//  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC1ConvertedValues, 9) != HAL_OK)
+//  {
+//	  _Error_Handler(__FILE__, __LINE__);
+//  }
 
 }
 
@@ -308,13 +309,35 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 /* USER CODE BEGIN 1 */
 void ADC1_Start(void){
 	  // -- Enables ADC DMA request
-	  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC1ConvertedValues, 9) != HAL_OK)
+	  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC1ConvertedValues, ADCVALUES_BUFFER_LENGTH) != HAL_OK)
 	  {
 		  _Error_Handler(__FILE__, __LINE__);
 	  }
 }
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-	HAL_ADC_Stop_DMA(&hadc1);
+
+	if(hadc->Instance==ADC1){
+
+		HAL_ADC_Stop_DMA(&hadc1);
+
+		uint8_t cnt = 0;
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+		while (cnt < ADCVALUES_BUFFER_LENGTH)
+		{
+			// Post the byte.
+			xQueueSendFromISR( ADCValuesQueue, &ADC1ConvertedValues[cnt], &xHigherPriorityTaskWoken );
+			cnt++;
+
+		}
+
+		// Now the buffer is empty we can switch context if necessary.
+		if( xHigherPriorityTaskWoken )
+		{
+			// Actual macro used here is port specific.
+			portEND_SWITCHING_ISR( xHigherPriorityTaskWoken );//  portYIELD_FROM_ISR ();
+		}
+	}
 }
 
 /* USER CODE END 1 */

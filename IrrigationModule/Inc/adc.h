@@ -55,19 +55,17 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f3xx_hal.h"
+#include "cmsis_os.h"
 #include "main.h"
 
-/* USER CODE BEGIN Includes */
 
-/* USER CODE END Includes */
+#define ADCVALUES_BUFFER_LENGTH 9
 
 extern ADC_HandleTypeDef hadc1;
 extern DMA_HandleTypeDef hdma_adc1;
 extern uint16_t ADC1ConvertedValues[9];
+extern xQueueHandle ADCValuesQueue;
 
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
 
 extern void _Error_Handler(char *, int);
 

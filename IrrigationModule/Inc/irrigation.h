@@ -34,7 +34,7 @@ struct pumpstatus_s {
 	bool cmd_consumed = false;
 };
 
-enum pumpstate_t: uint8_t{
+enum class pumpstate_t{
 	init,
 	running,
 	reversing,
@@ -42,43 +42,44 @@ enum pumpstate_t: uint8_t{
 	waiting
 };
 
-enum pumptype_t: uint8_t{
-	pump_generic,
+enum class pumptype_t{
+	generic,
 	binary,
 	drv8833_dc,
 	drv8833_bldc
 };
 
-enum motortype_t: uint8_t{
+enum class motortype_t{
 	dc_motor,
 	bldc_motor
 };
 
-enum pumpcmd_t: uint8_t{
+enum class pumpcmd_t{
 	start,
 	stop,
 	reverse
 };
 
-enum fixedwaterlevelsensorstate_t: uint8_t{
+enum class fixedwaterlevelsensorstate_t{
 	undetermined,
 	wet,
 	dry
 };
 
-enum waterlevelsensorsubtype_t: uint8_t {
+enum class waterlevelsensorsubtype_t{
 	unknown,
 	fixed,
 	floating
 };
 
-enum waterlevelsensortype_t: uint8_t {
-	WLS_optical,
-	WLS_capacitive,
-	WLS_resistive
+enum class waterlevelsensortype_t{
+	unknown,
+	optical,
+	capacitive,
+	resistive
 };
 
-enum sensorinterfacetype_t {
+enum class sensorinterfacetype_t {
 	gpio,
 	analog,
 	digital_I2C,
@@ -88,21 +89,22 @@ enum sensorinterfacetype_t {
 	digital_CAN
 };
 
-enum temperaturesensortype_t: uint8_t {
-	temp_generic,
+enum class temperaturesensortype_t{
+	generic,
 	ds18b20
 };
 
-enum moisturesensortype_t: uint8_t {
-	moist_generic,
-	moist_capacitive_noshield
+enum class moisturesensortype_t{
+	generic,
+	capacitive_noshield
 };
 
-enum pumpcontrollermode_t: uint8_t {
-	auto_mode,
-	manual_mode,
-	external_mode,
-	sleep_mode
+enum class pumpcontrollermode_t{
+	init,
+	automatic,
+	manual,
+	external,
+	sleep
 };
 
 using namespace std;
@@ -111,7 +113,7 @@ class Pump{
 
 protected:
 
-	pumptype_t					type = pumptype_t::pump_generic;
+	pumptype_t					type = pumptype_t::generic;
 	pumpstate_t 				state = pumpstate_t::init;		///< current pump's working state based on enum pumpstate_t
 
 	virtual bool 				start() = 0;
@@ -259,7 +261,7 @@ public:
 	moisturePercent(0),
 	valid(false)
 	{
-		this->type = moisturesensortype_t::moist_generic;
+		this->type = moisturesensortype_t::generic;
 	};
 
 	virtual ~MoistureSensor(){};
@@ -336,7 +338,7 @@ public:
 		mountpositionMeters(0),
 		state(fixedwaterlevelsensorstate_t::undetermined)
 		{
-			this->type = waterlevelsensortype_t::WLS_optical;
+			this->type = waterlevelsensortype_t::optical;
 			this->subtype = waterlevelsensorsubtype_t::fixed;
 			this->interfacetype = sensorinterfacetype_t::gpio;
 		};
@@ -471,27 +473,28 @@ class PumpController{
 
 private:
 
-	const int8_t 						pumpsLimit;
+	const int8_t 						pumpsLimit = 1;
 	int8_t								pumpsCount;
-	const int8_t						moisturesensorsLimit;
+	const int8_t						moisturesensorsLimit = 10;
 	int8_t								moisturesensorsCount;
 	pumpcontrollermode_t				mode;
 
 public:
 
 	PumpController():
-		pumpsLimit(5),
 		pumpsCount(0),
-		moisturesensorsLimit(10),
 		moisturesensorsCount(0),
-		mode(pumpcontrollermode_t::sleep_mode)
+		mode(pumpcontrollermode_t::init)
 	{};
 
 	~PumpController()
-	{};
+	{
+		if (pBinPump != nullptr) delete pBinPump;
+		if (p8833Pump != nullptr) delete p8833Pump;
+	};
 
-	vector <BinaryPump>					vBinPump;
-	vector <DRV8833Pump>				v8833Pump;
+	BinaryPump							*pBinPump = nullptr;
+	DRV8833Pump							*p8833Pump = nullptr;
 	vector <AnalogDMAMoistureSensor> 	vMoistureSensor;
 
 	bool								init(void);
@@ -506,7 +509,7 @@ public:
 
 
 void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);					//TODO: maybe move to PumpController class
-void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);	//TODO: maybe move to PumpController class
+void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);
 
 
 

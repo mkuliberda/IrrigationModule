@@ -684,7 +684,7 @@ bool WaterTank::waterlevelSensorCreate(const waterlevelsensortype_t & _sensortyp
 
 	switch (_sensortype)
 	{
-	case waterlevelsensortype_t::WLS_optical:
+	case waterlevelsensortype_t::optical:
 		if (this->waterlevelSensorsCount < (this->waterlevelSensorsLimit+1))
 		{
 			OpticalWaterLevelSensor temp_sensor;
@@ -697,11 +697,11 @@ bool WaterTank::waterlevelSensorCreate(const waterlevelsensortype_t & _sensortyp
 		}
 		break;
 
-	case waterlevelsensortype_t::WLS_capacitive:
+	case waterlevelsensortype_t::capacitive:
 		success = false;
 		break;
 
-	case waterlevelsensortype_t::WLS_resistive:
+	case waterlevelsensortype_t::resistive:
 		success = false;
 		break;
 
@@ -732,7 +732,7 @@ bool WaterTank::temperatureSensorCreate(const temperaturesensortype_t & _sensort
 		}
 		break;
 
-	case temperaturesensortype_t::temp_generic:
+	case temperaturesensortype_t::generic:
 		success = false;
 		break;
 
@@ -813,8 +813,7 @@ bool PumpController::pumpCreate(const pumptype_t & _pumptype){
 	case pumptype_t::binary:
 		if (this->pumpsCount < (this->pumpsLimit+1))
 		{
-			BinaryPump temp_pump;
-			this->vBinPump.push_back(temp_pump);
+			this->pBinPump = new BinaryPump();
 			this->pumpsCount++;
 		}
 		else
@@ -823,15 +822,14 @@ bool PumpController::pumpCreate(const pumptype_t & _pumptype){
 		}
 		break;
 
-	case pumptype_t::pump_generic:
+	case pumptype_t::generic:
 		success = false;
 		break;
 
 	case pumptype_t::drv8833_dc:
 		if (this->pumpsCount < (this->pumpsLimit+1))
 		{
-			DRV8833Pump temp_pump(motortype_t::dc_motor);
-			this->v8833Pump.push_back(temp_pump);
+			this->p8833Pump = new DRV8833Pump(motortype_t::dc_motor);
 			this->pumpsCount++;
 		}
 		else
@@ -843,8 +841,7 @@ bool PumpController::pumpCreate(const pumptype_t & _pumptype){
 	case pumptype_t::drv8833_bldc:
 		if (this->pumpsCount < (this->pumpsLimit+1))
 		{
-			DRV8833Pump temp_pump(motortype_t::bldc_motor);
-			this->v8833Pump.push_back(temp_pump);
+			this->p8833Pump = new DRV8833Pump(motortype_t::bldc_motor);
 			this->pumpsCount++;
 		}
 		else
@@ -865,11 +862,11 @@ bool PumpController::moisturesensorCreate(const moisturesensortype_t & _sensorty
 	bool success = true;
 
 	switch(_sensortype){
-	case moisturesensortype_t::moist_generic:
+	case moisturesensortype_t::generic:
 		success = false;
 		break;
 
-	case moisturesensortype_t::moist_capacitive_noshield:
+	case moisturesensortype_t::capacitive_noshield:
 		if (this->moisturesensorsCount < (this->moisturesensorsLimit+1))
 		{
 			AnalogDMAMoistureSensor temp_sensor;

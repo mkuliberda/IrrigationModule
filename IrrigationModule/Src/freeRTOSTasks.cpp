@@ -23,16 +23,28 @@
 
 #define TANK1STATUS_BUFFER_LENGTH 1
 #define PUMPSSTATUS_BUFFER_LENGTH 1
-#define ADCVALUES_BUFFER_LENGTH 9
+
 
 
 SemaphoreHandle_t xUserButtonSemaphore = NULL;
 xQueueHandle tank1StatusQueue;
 xQueueHandle pumpsStatusQueue;
-xQueueHandle ADCValuesQueue;
+xQueueHandle soilMoistureQueue;
+xQueueHandle batteryQueue;
 
+void vADCReadTask( void *pvParameters )
+{
+	portTickType xLastWakeTime;
+	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
+	xLastWakeTime=xTaskGetTickCount();
 
-
+    for( ;; )
+    {
+		ADC1_Start();
+    	LEDToggle(9);
+    	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
+    }
+}
 
 void vLEDFlashTask( void *pvParameters )
 {
@@ -42,8 +54,8 @@ void vLEDFlashTask( void *pvParameters )
 
     for( ;; )
     {
-      LEDToggle(10);
-      vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
+    	LEDToggle(10);
+    	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 }
 
@@ -52,14 +64,14 @@ void vUserButtonCheckTask(void *pvParameters )
 	vSemaphoreCreateBinary(xUserButtonSemaphore);
 
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 0.2 * TASK_FREQ_MULTIPLIER; //<5Hz
+	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
 
     for( ;; )
     {
     	if (UserButtonRead() == 1)
     	{
-    		LEDToggle(8);
+    		HAL_GPIO_WritePin(LD8_GPIO_Port, LD8_Pin, GPIO_PIN_SET);
     		xSemaphoreGive(xUserButtonSemaphore);
     	}
     	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
@@ -100,38 +112,48 @@ void vIrrigationControlTask( void *pvParameters )
 	ADCValuesQueue = xQueueCreate(ADCVALUES_BUFFER_LENGTH, sizeof( uint16_t ) );
 
 
-	BinaryPump *pump1 = new BinaryPump();
-	pump1->init(0, 2, 5, pump1gpio, pump1led);
+	PlantsGroup *plantsgroup1 = new PlantsGroup(1);
+	plantsgroup1->plantCreate("Pelargonia");
+	plantsgroup1->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (plantsgroup1->irrigationController->pumpCreate(pumptype_t::binary) == true){
+		plantsgroup1->irrigationController->pBinPump->init(1, 2, 5, pump1gpio, pump1led);
+	}
 
-	BinaryPump *pump2 = new BinaryPump();
-	pump2->init(1, 3, 10, pump2gpio, pump2led);
 
-	BinaryPump *pump3 = new BinaryPump();
-	pump3->init(2, 3, 10, pump3gpio, pump3led);
+	PlantsGroup *plantsgroup2 = new PlantsGroup(2);
+	plantsgroup2->plantCreate("Surfinia1");
+	plantsgroup2->plantCreate("Surfinia2");
+	plantsgroup2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	plantsgroup2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (plantsgroup2->irrigationController->pumpCreate(pumptype_t::binary) == true){
+		plantsgroup2->irrigationController->pBinPump->init(2, 3, 10, pump2gpio, pump2led);
+	}
 
-	//PlantsGroup *plantsgroup1 = new PlantsGroup(1);
-	//plantsgroup1->plantCreate("Pelargonie");
-	//plantsgroup1->irrigationController->moisturesensorCreate(moisturesensortype_t::moist_capacitive_noshield);
-	//plantsgroup1->irrigationController->pumpCreate(pumptype_t::binary);
+
+	PlantsGroup *plantsgroup3 = new PlantsGroup(3);
+	plantsgroup3->plantCreate("Trawa");
+	plantsgroup3->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (plantsgroup3->irrigationController->pumpCreate(pumptype_t::binary) == true){
+		plantsgroup3->irrigationController->pBinPump->init(3, 3, 10, pump3gpio, pump3led);
+	}
 
 
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
 	tank1->init();
-	tank1->waterlevelSensorCreate(waterlevelsensortype_t::WLS_optical);
-	tank1->waterlevelSensorCreate(waterlevelsensortype_t::WLS_optical);
-	tank1->temperatureSensorCreate(temperaturesensortype_t::ds18b20);
-
-	tank1->vOpticalWLSensors[0].init(WLSensorHighPositionMeters, opticalwaterlevelsensor1gpio);
-	tank1->vOpticalWLSensors[1].init(WLSensorLowPositionMeters, opticalwaterlevelsensor2gpio);
-	tank1->vTemperatureSensors[0].init(ds18b20gpio, &htim7);
-
+	if (tank1->waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
+		tank1->vOpticalWLSensors[0].init(WLSensorHighPositionMeters, opticalwaterlevelsensor1gpio);
+	}
+	if (tank1->waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
+		tank1->vOpticalWLSensors[1].init(WLSensorLowPositionMeters, opticalwaterlevelsensor2gpio);
+	}
+	if (tank1->temperatureSensorCreate(temperaturesensortype_t::ds18b20) == true){
+		tank1->vTemperatureSensors[0].init(ds18b20gpio, &htim7);
+	}
 
 
 	bool test_cmd = true;
 	bool cmd_consumed = false;
 	uint32_t test_cnt = 0;
-
-
 
     for( ;; )
     {
@@ -140,25 +162,26 @@ void vIrrigationControlTask( void *pvParameters )
     	tank1Status+=test_cnt;
     	xQueueOverwrite( tank1StatusQueue, &tank1Status);
 
-    	pumpStateEncode(pump1->status, pumpsStatus);
-    	pumpStateEncode(pump2->status, pumpsStatus);
-    	pumpStateEncode(pump3->status, pumpsStatus);
+    	pumpStateEncode(plantsgroup1->irrigationController->pBinPump->status, pumpsStatus);
+    	pumpStateEncode(plantsgroup2->irrigationController->pBinPump->status, pumpsStatus);
+    	pumpStateEncode(plantsgroup3->irrigationController->pBinPump->status, pumpsStatus);
     	xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
+
+    	for (uint8_t i=0; i<9;i++) xQueueReceive(ADCValuesQueue, &adcValues[i], 5);
 
     	if(test_cnt < 200)
     	{
     		test_cmd = true;
-        	pump1->run(dt_seconds,test_cmd, cmd_consumed);
+    		plantsgroup1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
     	}
     	else if(test_cnt >= 200 && test_cnt < 400)
     	{
     		if(test_cnt == 250) cmd_consumed = false;
     		test_cmd = false;
-        	pump1->run(dt_seconds,test_cmd, cmd_consumed);
+    		plantsgroup1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
     	}
     	else if(test_cnt >= 400)
 		{
-    		ADC1_Start();
     		cmd_consumed = false;
     		test_cnt = 0;
 		}
@@ -167,20 +190,17 @@ void vIrrigationControlTask( void *pvParameters )
 		vTaskDelayUntil(&xLastWakeTime, xFrequencySeconds);
     }
 
-    delete pump1; delete pump2; delete pump3;
+    delete plantsgroup1; delete plantsgroup2; delete plantsgroup3;
     delete tank1;
-    //delete plant1; delete plant2; delete plant3;
 
 }
 void vStatusNotifyTask( void *pvParameters )
 {
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
+	const portTickType xFrequencySeconds = 1 * TASK_FREQ_MULTIPLIER; //<1Hz
 	xLastWakeTime=xTaskGetTickCount();
-	uint32_t tank1Status = 0;
-	uint32_t pumpsStatus = 0;
-	uint16_t adcValuesReceived[1] = {1};
-	char message[] = "test\n";
+	USART_Buffer32 tank1Status;
+	USART_Buffer32 pumpsStatus;
 	array<struct pumpstatus_s,4> a_pumpStatus;
 
 
@@ -192,19 +212,18 @@ void vStatusNotifyTask( void *pvParameters )
     	{
 		   if (xSemaphoreTake(xUserButtonSemaphore, (portTickType)2) == pdTRUE)
 		   {
-			   tank1Status = 0;
-			   pumpsStatus = 0;
-			   if(xQueuePeek( pumpsStatusQueue, &pumpsStatus, 0 ) == pdPASS || xQueuePeek( tank1StatusQueue, &tank1Status, 0 ) == pdPASS)
+			   if (xQueuePeek(pumpsStatusQueue, &pumpsStatus.status, 0) == pdPASS)
 			   {
-				   pumpStateDecode(a_pumpStatus, pumpsStatus);
-				   //sprintf(message,"tank1:%lu,pumps:%lu\n",tank1Status, pumpsStatus); //TODO: find better way, large amount of stack is being eaten here
-				   //sprintf((char*)message,"tank1:%lu,pumps:%lu,adc:%u\n",tank1Status, pumpsStatus,adcValuesReceived[0]);
-				   HAL_UART_Transmit(&huart4, (uint8_t*)message, (uint16_t)strlen((char*)message), 50);
-				   LEDToggle(9);
+				   pumpStateDecode(a_pumpStatus, pumpsStatus.status);
+				   HAL_UART_Transmit(&huart4, pumpsStatus.buffer, 4, 50);
 			   }
+			   if (xQueuePeek( tank1StatusQueue, &tank1Status.status, 0 ) == pdPASS)
+			   {
+				   HAL_UART_Transmit(&huart4, tank1Status.buffer, 4, 50);
+			   }
+			   HAL_GPIO_WritePin(LD8_GPIO_Port, LD8_Pin, GPIO_PIN_RESET);
 		   }
 		}
-    	LEDToggle(7);
         vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 
@@ -212,12 +231,13 @@ void vStatusNotifyTask( void *pvParameters )
 void vWirelessCommTask( void *pvParameters )
 {
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
+	const portTickType xFrequencySeconds = 0.05 * TASK_FREQ_MULTIPLIER; //<10Hz
 	xLastWakeTime=xTaskGetTickCount();
 
     for( ;; )
     {
-      vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
+    	LEDToggle(7);
+    	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 
 }

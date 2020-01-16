@@ -119,11 +119,13 @@ int main(void)
 
   /* Call init function for freertos objects (in freertos.c) */
   MX_FREERTOS_Init();
-  xTaskCreate( vIrrigationControlTask, ( const char * ) "Irrigation Control", configMINIMAL_STACK_SIZE+128, NULL, tskIDLE_PRIORITY, NULL );
-  xTaskCreate( vStatusNotifyTask, ( const char * ) "Status Notify", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
+  xTaskCreate( vIrrigationControlTask, ( const char * ) "Irrigation Control", configMINIMAL_STACK_SIZE+128, NULL, tskIDLE_PRIORITY+5, NULL );
+  xTaskCreate( vStatusNotifyTask, ( const char * ) "Status Notify", configMINIMAL_STACK_SIZE+128, NULL, tskIDLE_PRIORITY+1, NULL );
   xTaskCreate( vLEDFlashTask, ( const char * ) "LED", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
-  xTaskCreate( vWirelessCommTask, ( const char * ) "Wireless Communication", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
-  xTaskCreate( vUserButtonCheckTask, ( const char * ) "User Button", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
+  xTaskCreate( vWirelessCommTask, ( const char * ) "Wireless Communication", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+6, NULL );
+  xTaskCreate( vUserButtonCheckTask, ( const char * ) "User Button", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+7, NULL );
+  xTaskCreate( vADCReadTask, ( const char * ) "ADC", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+5, NULL );
+
 
 
 

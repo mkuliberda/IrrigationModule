@@ -16,6 +16,7 @@
 #define TASK_FREQ_MULTIPLIER 1000
 
 
+void vADCReadTask( void *pvParameters );
 void vLEDFlashTask( void *pvParameters );
 void vUserButtonCheckTask( void *pvParameters );
 void vIrrigationControlTask( void *pvParameters );

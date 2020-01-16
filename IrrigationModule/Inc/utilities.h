@@ -15,5 +15,10 @@ constexpr const T& clamp( const T& v, const T& lo, const T& hi )
     return (v < lo) ? lo : (hi < v) ? hi : v;
 }
 
+union USART_Buffer32{
+	uint32_t status;
+	uint8_t buffer[4];
+};
+
 
 #endif /* UTILITIES_H_ */
