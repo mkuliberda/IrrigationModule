@@ -780,7 +780,7 @@ bool AnalogDMAMoistureSensor::isValid(void){
 	return this->valid;
 }
 
-void AnalogDMAMoistureSensor::rawUpdate(const uint32_t & _raw_value){
+void AnalogDMAMoistureSensor::rawUpdate(const uint16_t & _raw_value){
 	this->moistureRaw = _raw_value;
 	this->percentUpdate();
 	this->voltsUpdate();
@@ -870,7 +870,7 @@ bool PumpController::moisturesensorCreate(const moisturesensortype_t & _sensorty
 		if (this->moisturesensorsCount < (this->moisturesensorsLimit+1))
 		{
 			AnalogDMAMoistureSensor temp_sensor;
-			this->vMoistureSensor.push_back(temp_sensor);
+			this->vDMAMoistureSensor.push_back(temp_sensor);
 			this->moisturesensorsCount++;
 		}
 		else

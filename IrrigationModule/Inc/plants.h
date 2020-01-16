@@ -46,7 +46,7 @@ public:
 
 };
 
-class PlantsGroup{
+class IrrigationSector{
 
 private:
 
@@ -59,19 +59,20 @@ public:
 
 	PumpController *irrigationController;
 
-	PlantsGroup(const uint8_t & _sector):
+	IrrigationSector(const uint8_t & _sector):
 	sector(_sector),
 	plantsCount(0)
 	{
 		irrigationController = new PumpController();
 	};
 
-	~PlantsGroup(){
+	~IrrigationSector(){
 		delete irrigationController;
 	}
 
 	const uint8_t& sectorGet(void);
 	bool plantCreate(const string & _name);
+	bool update(const double & _dt);
 
 };
 

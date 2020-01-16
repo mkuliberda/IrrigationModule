@@ -112,29 +112,29 @@ void vIrrigationControlTask( void *pvParameters )
 	ADCValuesQueue = xQueueCreate(ADCVALUES_BUFFER_LENGTH, sizeof( uint16_t ) );
 
 
-	PlantsGroup *plantsgroup1 = new PlantsGroup(1);
-	plantsgroup1->plantCreate("Pelargonia");
-	plantsgroup1->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (plantsgroup1->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		plantsgroup1->irrigationController->pBinPump->init(1, 2, 5, pump1gpio, pump1led);
+	IrrigationSector *sector1 = new IrrigationSector(1);
+	sector1->plantCreate("Pelargonia");
+	sector1->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector1->irrigationController->pumpCreate(pumptype_t::binary) == true){
+		sector1->irrigationController->pBinPump->init(1, 2, 5, pump1gpio, pump1led);
 	}
 
 
-	PlantsGroup *plantsgroup2 = new PlantsGroup(2);
-	plantsgroup2->plantCreate("Surfinia1");
-	plantsgroup2->plantCreate("Surfinia2");
-	plantsgroup2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	plantsgroup2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (plantsgroup2->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		plantsgroup2->irrigationController->pBinPump->init(2, 3, 10, pump2gpio, pump2led);
+	IrrigationSector *sector2 = new IrrigationSector(2);
+	sector2->plantCreate("Surfinia1");
+	sector2->plantCreate("Surfinia2");
+	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector2->irrigationController->pumpCreate(pumptype_t::binary) == true){
+		sector2->irrigationController->pBinPump->init(2, 3, 10, pump2gpio, pump2led);
 	}
 
 
-	PlantsGroup *plantsgroup3 = new PlantsGroup(3);
-	plantsgroup3->plantCreate("Trawa");
-	plantsgroup3->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (plantsgroup3->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		plantsgroup3->irrigationController->pBinPump->init(3, 3, 10, pump3gpio, pump3led);
+	IrrigationSector *sector3 = new IrrigationSector(3);
+	sector3->plantCreate("Trawa");
+	sector3->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector3->irrigationController->pumpCreate(pumptype_t::binary) == true){
+		sector3->irrigationController->pBinPump->init(3, 3, 10, pump3gpio, pump3led);
 	}
 
 
@@ -162,26 +162,28 @@ void vIrrigationControlTask( void *pvParameters )
     	tank1Status+=test_cnt;
     	xQueueOverwrite( tank1StatusQueue, &tank1Status);
 
-    	pumpStateEncode(plantsgroup1->irrigationController->pBinPump->status, pumpsStatus);
-    	pumpStateEncode(plantsgroup2->irrigationController->pBinPump->status, pumpsStatus);
-    	pumpStateEncode(plantsgroup3->irrigationController->pBinPump->status, pumpsStatus);
+    	pumpStateEncode(sector1->irrigationController->pBinPump->status, pumpsStatus);
+    	pumpStateEncode(sector2->irrigationController->pBinPump->status, pumpsStatus);
+    	pumpStateEncode(sector3->irrigationController->pBinPump->status, pumpsStatus);
     	xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
 
-    	for (uint8_t i=0; i<9;i++) xQueueReceive(ADCValuesQueue, &adcValues[i], 5);
-
-
+    	for (uint8_t i=0; i<9;i++) xQueueReceive(ADCValuesQueue, &adcValues[i], 0);
+    	sector1->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[0]);
+    	sector2->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[1]);
+    	sector2->irrigationController->vDMAMoistureSensor[1].rawUpdate(adcValues[2]);
+    	sector3->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[3]);
 
     	//-----------test/development part only, to be deleted in final version----------
     	if(test_cnt < 200)
     	{
     		test_cmd = true;
-    		plantsgroup1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
+    		sector1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
     	}
     	else if(test_cnt >= 200 && test_cnt < 400)
     	{
     		if(test_cnt == 250) cmd_consumed = false;
     		test_cmd = false;
-    		plantsgroup1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
+    		sector1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
     	}
     	else if(test_cnt >= 400)
 		{
@@ -198,7 +200,7 @@ void vIrrigationControlTask( void *pvParameters )
 		vTaskDelayUntil(&xLastWakeTime, xFrequencySeconds);
     }
 
-    delete plantsgroup1; delete plantsgroup2; delete plantsgroup3;
+    delete sector1; delete sector2; delete sector3;
     delete tank1;
 
 }

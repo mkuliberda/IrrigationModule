@@ -277,7 +277,7 @@ class AnalogDMAMoistureSensor: MoistureSensor{
 
 private:
 
-	uint32_t						moistureRaw;
+	uint16_t						moistureRaw;
 	float							moistureVolts;
 
 	void		 					percentUpdate(void);
@@ -296,7 +296,7 @@ public:
 
 	float		 					read(void);
 	bool							isValid(void);
-	void							rawUpdate(const uint32_t & _raw_value);
+	void							rawUpdate(const uint16_t & _raw_value);
 	float							voltsGet(void);
 
 };
@@ -495,7 +495,7 @@ public:
 
 	BinaryPump							*pBinPump = nullptr;
 	DRV8833Pump							*p8833Pump = nullptr;
-	vector <AnalogDMAMoistureSensor> 	vMoistureSensor;
+	vector <AnalogDMAMoistureSensor> 	vDMAMoistureSensor;
 
 	bool								init(void);
 	uint8_t								update(const double & _dt);

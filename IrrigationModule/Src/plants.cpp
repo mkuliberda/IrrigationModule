@@ -19,14 +19,14 @@ string& Plant::nameGet(void){
 }
 
 /***********************************/
-/*! PlantsGroup class implementation */
+/*! IrrigationSector class implementation */
 /***********************************/
 
-const uint8_t& PlantsGroup:: sectorGet(void){
+const uint8_t& IrrigationSector:: sectorGet(void){
 	return this->sector;
 }
 
-bool PlantsGroup::plantCreate(const string & _name){
+bool IrrigationSector::plantCreate(const string & _name){
 
 	bool success = true;
 
@@ -42,6 +42,11 @@ bool PlantsGroup::plantCreate(const string & _name){
 	}
 
 	return success;
+}
+
+bool IrrigationSector::update(const double & _dt){
+	//TODO:implement this
+	return true;
 }
 
 
