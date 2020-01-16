@@ -23,7 +23,8 @@
 
 #define TANK1STATUS_BUFFER_LENGTH 1
 #define PUMPSSTATUS_BUFFER_LENGTH 1
-
+#define SOILMOISTURE_BUFFER_LENGTH 8
+#define BATTERY_BUFFER_LENGTH 1
 
 
 SemaphoreHandle_t xUserButtonSemaphore = NULL;
@@ -107,9 +108,12 @@ void vIrrigationControlTask( void *pvParameters )
 	uint32_t tank1Status = 0;
 	uint32_t pumpsStatus = 0; //8 bits per pump
 	uint16_t adcValues[9] = {1,2,3,4,5,6,7,8,9};
+
 	tank1StatusQueue = xQueueCreate(TANK1STATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
 	pumpsStatusQueue = xQueueCreate(PUMPSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
 	ADCValuesQueue = xQueueCreate(ADCVALUES_BUFFER_LENGTH, sizeof( uint16_t ) );
+	vSemaphoreCreateBinary(xADCReadingsReadySemaphore);
+
 
 
 	IrrigationSector *sector1 = new IrrigationSector(1);
@@ -167,12 +171,17 @@ void vIrrigationControlTask( void *pvParameters )
     	pumpStateEncode(sector3->irrigationController->pBinPump->status, pumpsStatus);
     	xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
 
-    	for (uint8_t i=0; i<9;i++) xQueueReceive(ADCValuesQueue, &adcValues[i], 0);
-    	sector1->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[0]);
-    	sector2->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[1]);
-    	sector2->irrigationController->vDMAMoistureSensor[1].rawUpdate(adcValues[2]);
-    	sector3->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[3]);
-
+    	if(xADCReadingsReadySemaphore != NULL)
+    	{
+		   if (xSemaphoreTake(xADCReadingsReadySemaphore, (portTickType)2) == pdTRUE)
+		   {
+				for (uint8_t i=0; i<9;i++) xQueueReceive(ADCValuesQueue, &adcValues[i], 0);
+				sector1->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[0]);
+				sector2->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[1]);
+				sector2->irrigationController->vDMAMoistureSensor[1].rawUpdate(adcValues[2]);
+				sector3->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[3]);
+		   }
+    	}
     	//-----------test/development part only, to be deleted in final version----------
     	if(test_cnt < 200)
     	{

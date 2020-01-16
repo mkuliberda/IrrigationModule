@@ -61,6 +61,7 @@ ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 uint16_t ADC1ConvertedValues[9];
 xQueueHandle ADCValuesQueue;
+SemaphoreHandle_t xADCReadingsReadySemaphore = NULL;
 
 /* ADC1 init function */
 void MX_ADC1_Init(void)
@@ -330,6 +331,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 			cnt++;
 
 		}
+		xSemaphoreGiveFromISR(xADCReadingsReadySemaphore, &xHigherPriorityTaskWoken);
 
 		// Now the buffer is empty we can switch context if necessary.
 		if( xHigherPriorityTaskWoken )
