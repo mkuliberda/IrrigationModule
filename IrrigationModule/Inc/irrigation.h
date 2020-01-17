@@ -128,7 +128,7 @@ public:
 	bool init();
 	virtual void 				run(const double & _dt);
 	virtual void 				stateSet(const pumpstate_t & _st) = 0;
-	virtual pumpstate_t 		stateGet(void) = 0;
+	virtual pumpstate_t& 		stateGet(void) = 0;
 	virtual bool 				isRunning(void);
 
 };
@@ -146,10 +146,10 @@ private:
 
 	void 						runtimeReset(void);
 	void 						runtimeIncrease(const double & _dt);
-	double 						runtimeGetSeconds(void);
+	double& 					runtimeGetSeconds(void);
 	void 						idletimeReset(void);
 	void 						idletimeIncrease(const double & _dt);
-	double 						idletimeGetSeconds(void);
+	double& 					idletimeGetSeconds(void);
 
 protected:
 
@@ -172,7 +172,7 @@ public:
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
 	void 						run(const double & _dt, const bool & _cmd_start, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
-	pumpstate_t 				stateGet(void) override;
+	pumpstate_t& 				stateGet(void) override;
 	void 						forcestart(void);
 	void 						forcestop(void);
 
@@ -195,13 +195,13 @@ private:
 
 	void 						runtimeReset(void);
 	void 						runtimeIncrease(const double & _dt);
-	double 						runtimeGetSeconds(void);
+	double&						runtimeGetSeconds(void);
 	void 						idletimeReset(void);
 	void 						idletimeIncrease(const double & _dt);
-	double 						idletimeGetSeconds(void);
+	double& 					idletimeGetSeconds(void);
 	void 						revtimeReset(void);
 	void 						revtimeIncrease(const double & _dt);
-	double 						revtimeGetSeconds(void);
+	double& 					revtimeGetSeconds(void);
 
 
 protected:
@@ -233,7 +233,7 @@ public:
 								const struct gpio_s & _fault, const struct gpio_s & _mode);
 	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
-	pumpstate_t 				stateGet(void) override;
+	pumpstate_t& 				stateGet(void) override;
 	void 						forcestart(void);
 	void 						forcereverse(void);
 	void 						forcestop(void);
@@ -251,8 +251,8 @@ protected:
 	float 							moisturePercent;
 	bool							valid;
 
-	moisturesensortype_t 			typeGet(void);
-	sensorinterfacetype_t 			interfacetypeGet(void);
+	moisturesensortype_t& 			typeGet(void);
+	sensorinterfacetype_t& 			interfacetypeGet(void);
 	virtual void 					percentUpdate(void) = 0;
 
 public:
@@ -267,8 +267,8 @@ public:
 	virtual ~MoistureSensor(){};
 
 	virtual float		 			read(void) = 0;
-	virtual bool					isValid(void) = 0;
-	float							percentGet(void);
+	virtual bool&					isValid(void) = 0;
+	float&							percentGet(void);
 
 };
 
@@ -295,9 +295,9 @@ public:
 	~AnalogDMAMoistureSensor(){};
 
 	float		 					read(void);
-	bool							isValid(void);
+	bool&							isValid(void);
 	void							rawUpdate(const uint16_t & _raw_value);
-	float							voltsGet(void);
+	float&							voltsGet(void);
 
 };
 
@@ -309,9 +309,9 @@ protected:
 	waterlevelsensorsubtype_t 			subtype;
 	sensorinterfacetype_t				interfacetype;
 
-	virtual waterlevelsensorsubtype_t 	subtypeGet(void);
-	virtual waterlevelsensortype_t 		typeGet(void);
-	virtual sensorinterfacetype_t 		interfacetypeGet(void);
+	virtual waterlevelsensorsubtype_t& 	subtypeGet(void);
+	virtual waterlevelsensortype_t&		typeGet(void);
+	virtual sensorinterfacetype_t& 		interfacetypeGet(void);
 
 public:
 
@@ -343,7 +343,7 @@ public:
 			this->interfacetype = sensorinterfacetype_t::gpio;
 		};
 
-	const float 					mountpositionGet(void);
+	const float& 					mountpositionGet(void);
 	bool 							init(const float & _mountpositionMeters, const struct gpio_s & _pinout);
 	bool 							isValid(void);
 	bool 							isSubmersed(void);
@@ -357,8 +357,8 @@ protected:
 	temperaturesensortype_t 		type;
 	sensorinterfacetype_t			interfacetype;
 
-	temperaturesensortype_t 		typeGet(void);
-	sensorinterfacetype_t 			interfacetypeGet(void);
+	temperaturesensortype_t& 		typeGet(void);
+	sensorinterfacetype_t& 			interfacetypeGet(void);
 
 public:
 
@@ -393,7 +393,7 @@ public:
 	};
 
 	bool 							init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle);
-	bool 							isValid(void);
+	bool& 							isValid(void);
 	float 							temperatureCelsiusRead(void);
 
 };
@@ -435,9 +435,9 @@ private:
 	int8_t								temperatureSensorsCount;
 
 	void 								waterlevelSet(const contentlevel_t & _waterlevel);
-	contentlevel_t 						waterlevelGet(void);
+	contentlevel_t&						waterlevelGet(void);
 	void 								stateSet(const contentstate_t & _waterstate);
-	contentstate_t 						stateGet(void);
+	contentstate_t&						stateGet(void);
 	uint8_t 							waterlevelConvertToPercent(const float & _valMeters);
 
 public:
@@ -462,7 +462,7 @@ public:
 
 	bool 								init(void);
 	bool 								checkStateOK(uint32_t & errcodeBitmask);
-	float 								temperatureCelsiusGet(void);
+	float& 								temperatureCelsiusGet(void);
 	uint8_t		 						waterlevelPercentGet(void);
 	bool 								waterlevelSensorCreate(const waterlevelsensortype_t & _sensortype);
 	bool 								temperatureSensorCreate(const temperaturesensortype_t & _sensortype);

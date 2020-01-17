@@ -38,7 +38,7 @@ bool BinaryPump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSec
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
 	this->stateSet(pumpstate_t::stopped);
 
-	return this->isRunning();
+	return true;
 }
 
 void BinaryPump::run(const double & _dt, const bool & _cmd_start, bool & cmd_consumed){
@@ -138,7 +138,7 @@ void BinaryPump::forcestop(void){
 }
 
 
-pumpstate_t BinaryPump::stateGet(void){
+pumpstate_t& BinaryPump::stateGet(void){
 	return this->state;
 }
 
@@ -155,7 +155,7 @@ void BinaryPump::runtimeIncrease(const double & _dt){
 	this->runtimeSeconds += _dt;
 }
 
-double BinaryPump::runtimeGetSeconds(void){
+double& BinaryPump::runtimeGetSeconds(void){
 	return this->runtimeSeconds;
 }
 
@@ -167,7 +167,7 @@ void BinaryPump::idletimeIncrease(const double & _dt){
 	this->idletimeSeconds += _dt;
 }
 
-double BinaryPump::idletimeGetSeconds(void){
+double& BinaryPump::idletimeGetSeconds(void){
 	return this->idletimeSeconds;
 }
 
@@ -198,7 +198,7 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	//TODO: to implement, set stop here based on type dc/bldc
 	this->stateSet(pumpstate_t::stopped);
 
-	return this->isRunning();
+	return true;
 }
 
 bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
@@ -224,11 +224,11 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	//TODO: to implement, set stop here based on type dc/bldc
 	this->stateSet(pumpstate_t::stopped);
 
-	return this->isRunning();
+	return true;
 }
 
 void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed){
-
+	//TODO: implement this
 }
 
 bool DRV8833Pump::start(void){
@@ -298,7 +298,7 @@ bool DRV8833Pump::faultCheck(void){
 }
 
 
-pumpstate_t DRV8833Pump::stateGet(void){
+pumpstate_t& DRV8833Pump::stateGet(void){
 	return this->state;
 }
 
@@ -315,7 +315,7 @@ void DRV8833Pump::runtimeIncrease(const double & _dt){
 	this->runtimeSeconds += _dt;
 }
 
-double DRV8833Pump::runtimeGetSeconds(void){
+double& DRV8833Pump::runtimeGetSeconds(void){
 	return this->runtimeSeconds;
 }
 
@@ -327,7 +327,7 @@ void DRV8833Pump::idletimeIncrease(const double & _dt){
 	this->idletimeSeconds += _dt;
 }
 
-double DRV8833Pump::idletimeGetSeconds(void){
+double& DRV8833Pump::idletimeGetSeconds(void){
 	return this->idletimeSeconds;
 }
 
@@ -339,24 +339,69 @@ void DRV8833Pump::revtimeIncrease(const double & _dt){
 	this->revtimeSeconds += _dt;
 }
 
-double DRV8833Pump::revtimeGetSeconds(void){
+double& DRV8833Pump::revtimeGetSeconds(void){
 	return this->revtimeSeconds;
 }
 
+/***********************************/
+/*! MoistureSensor class implementation */
+/***********************************/
+
+moisturesensortype_t& MoistureSensor::typeGet(void){
+	return this->type;
+}
+
+sensorinterfacetype_t& MoistureSensor::interfacetypeGet(void){
+	return this->interfacetype;
+}
+
+float& MoistureSensor::percentGet(void){
+	return this->moisturePercent;
+}
+
+/***********************************/
+/*! AnalogDMAMoistureSensor class implementation */
+/***********************************/
+
+void AnalogDMAMoistureSensor::voltsUpdate(void){
+	this->moistureVolts = this->moistureRaw * 3.0f/4095.0f;
+}
+
+void AnalogDMAMoistureSensor::percentUpdate(void){
+	this->moisturePercent = this->moistureRaw * 100.0f/4095.0f;
+}
+
+float AnalogDMAMoistureSensor::read(void){
+	return 0; //Not used in this type of sensor
+}
+
+bool& AnalogDMAMoistureSensor::isValid(void){
+	return this->valid;
+}
+
+void AnalogDMAMoistureSensor::rawUpdate(const uint16_t & _raw_value){
+	this->moistureRaw = _raw_value;
+	this->percentUpdate();
+	this->voltsUpdate();
+}
+
+float& AnalogDMAMoistureSensor::voltsGet(void){
+	return this->moistureVolts;
+}
 
 /******************************************/
 /*! WaterLevelSensor class implementation */
 /******************************************/
 
-waterlevelsensorsubtype_t  WaterLevelSensor::subtypeGet(void){
+waterlevelsensorsubtype_t&  WaterLevelSensor::subtypeGet(void){
 	return this->subtype;
 }
 
-waterlevelsensortype_t WaterLevelSensor::typeGet(void){
+waterlevelsensortype_t& WaterLevelSensor::typeGet(void){
 	return this->type;
 }
 
-sensorinterfacetype_t WaterLevelSensor::interfacetypeGet(void){
+sensorinterfacetype_t& WaterLevelSensor::interfacetypeGet(void){
 	return this->interfacetype;
 }
 
@@ -373,7 +418,7 @@ bool OpticalWaterLevelSensor::init(const float & _mountpositionMeters, const str
 	return true;
 }
 
-const float OpticalWaterLevelSensor::mountpositionGet(void){
+const float& OpticalWaterLevelSensor::mountpositionGet(void){
 	return this->mountpositionMeters;
 }
 
@@ -395,11 +440,11 @@ bool OpticalWaterLevelSensor::isSubmersed(void){
 /*! TemperatureSensor class implementation */
 /******************************************/
 
-temperaturesensortype_t TemperatureSensor::typeGet(void){
+temperaturesensortype_t& TemperatureSensor::typeGet(void){
 	return this->type;
 }
 
-sensorinterfacetype_t TemperatureSensor::interfacetypeGet(void){
+sensorinterfacetype_t& TemperatureSensor::interfacetypeGet(void){
 	return this->interfacetype;
 }
 
@@ -519,7 +564,7 @@ uint8_t DS18B20::read (void){
 	return value;
 }
 
-bool DS18B20::isValid(void){
+bool& DS18B20::isValid(void){
 	return this->valid;
 }
 
@@ -550,11 +595,10 @@ float DS18B20::temperatureCelsiusRead(void){
 /***********************************/
 
 bool WaterTank::init(void){
-
 	return true;
 }
 
-float WaterTank::temperatureCelsiusGet(void){
+float& WaterTank::temperatureCelsiusGet(void){
 	return this->mean_watertemperatureCelsius;
 }
 
@@ -562,7 +606,7 @@ void WaterTank::waterlevelSet(const contentlevel_t & _waterlevel){
 	this->waterlevel= _waterlevel;
 }
 
-WaterTank::contentlevel_t WaterTank::waterlevelGet(void){
+WaterTank::contentlevel_t& WaterTank::waterlevelGet(void){
 	return this->waterlevel;
 }
 
@@ -570,7 +614,7 @@ void WaterTank::stateSet(const contentstate_t & _state){
 	this->waterstate = _state;
 }
 
-WaterTank::contentstate_t WaterTank::stateGet(void){
+WaterTank::contentstate_t& WaterTank::stateGet(void){
 	return this->waterstate;
 }
 
@@ -742,52 +786,6 @@ bool WaterTank::temperatureSensorCreate(const temperaturesensortype_t & _sensort
 	}
 
 	return success;
-}
-
-/***********************************/
-/*! MoistureSensor class implementation */
-/***********************************/
-
-moisturesensortype_t MoistureSensor::typeGet(void){
-	return this->type;
-}
-
-sensorinterfacetype_t MoistureSensor::interfacetypeGet(void){
-	return this->interfacetype;
-}
-
-float MoistureSensor::percentGet(void){
-	return this->moisturePercent;
-}
-
-/***********************************/
-/*! AnalogDMAMoistureSensor class implementation */
-/***********************************/
-
-void AnalogDMAMoistureSensor::voltsUpdate(void){
-	this->moistureVolts = this->moistureRaw * 3.0f/4095.0f;
-}
-
-void AnalogDMAMoistureSensor::percentUpdate(void){
-	this->moisturePercent = this->moistureRaw * 100.0f/4095.0f;
-}
-
-float AnalogDMAMoistureSensor::read(void){
-	return 0; //Not used in this type of sensor
-}
-
-bool AnalogDMAMoistureSensor::isValid(void){
-	return this->valid;
-}
-
-void AnalogDMAMoistureSensor::rawUpdate(const uint16_t & _raw_value){
-	this->moistureRaw = _raw_value;
-	this->percentUpdate();
-	this->voltsUpdate();
-}
-
-float AnalogDMAMoistureSensor::voltsGet(void){
-	return this->moistureVolts;
 }
 
 /***********************************/
