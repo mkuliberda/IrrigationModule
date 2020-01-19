@@ -115,6 +115,8 @@ protected:
 
 	pumptype_t					type = pumptype_t::generic;
 	pumpstate_t 				state = pumpstate_t::init;		///< current pump's working state based on enum pumpstate_t
+	struct pumpstatus_s 		status;
+
 
 	virtual bool 				start() = 0;
 	virtual bool 				stop() = 0;
@@ -130,6 +132,7 @@ public:
 	virtual void 				stateSet(const pumpstate_t & _st) = 0;
 	virtual pumpstate_t& 		stateGet(void) = 0;
 	virtual bool 				isRunning(void);
+	struct pumpstatus_s&		statusGet(void);
 
 };
 
@@ -166,8 +169,6 @@ public:
 	{
 		this->type=pumptype_t::binary;
 	};
-
-	struct pumpstatus_s 		status;
 
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
 	void 						run(const double & _dt, const bool & _cmd_start, bool & cmd_consumed);
@@ -222,8 +223,6 @@ public:
 		if (_type == motortype_t::bldc_motor) this->type = pumptype_t::drv8833_bldc;
 		if (_type == motortype_t::dc_motor) this->type = pumptype_t::drv8833_dc;
 	};
-
-	struct pumpstatus_s 		status;
 
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
 								const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led, \
@@ -497,8 +496,7 @@ public:
 	DRV8833Pump							*p8833Pump = nullptr;
 	vector <AnalogDMAMoistureSensor> 	vDMAMoistureSensor;
 
-	bool								init(void);
-	uint8_t								update(const double & _dt);
+	uint8_t								update(const double & _dt, const bool & _activate_watering);
 	bool								pumpCreate(const pumptype_t & _pumptype);
 	bool 								moisturesensorCreate(const moisturesensortype_t & _sensortype);
 	bool								modeSet(const pumpcontrollermode_t & _mode);
@@ -507,8 +505,7 @@ public:
 };
 
 
-
-void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);					//TODO: maybe move to PumpController class
+void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);
 void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);
 
 

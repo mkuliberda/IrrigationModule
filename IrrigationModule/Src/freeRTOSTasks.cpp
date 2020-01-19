@@ -49,8 +49,11 @@ void vADCReadTask( void *pvParameters )
 
 void vLEDFlashTask( void *pvParameters )
 {
+	/*************************
+	 * light led every second
+	 *************************/
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 1 * TASK_FREQ_MULTIPLIER; //<1Hz
+	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
 
     for( ;; )
@@ -107,6 +110,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 	uint32_t tank1Status = 0;
 	uint32_t pumpsStatus = 0; //8 bits per pump
+	uint8_t sectorController[3];
 	uint16_t adcValues[9] = {1,2,3,4,5,6,7,8,9};
 
 	tank1StatusQueue = xQueueCreate(TANK1STATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
@@ -118,27 +122,30 @@ void vIrrigationControlTask( void *pvParameters )
 
 	IrrigationSector *sector1 = new IrrigationSector(1);
 	sector1->plantCreate("Pelargonia");
+	sector1->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector1->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	if (sector1->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		sector1->irrigationController->pBinPump->init(1, 2, 5, pump1gpio, pump1led);
+		sector1->irrigationController->pBinPump->init(1, 4, 10, pump1gpio, pump1led);
 	}
 
 
 	IrrigationSector *sector2 = new IrrigationSector(2);
 	sector2->plantCreate("Surfinia1");
 	sector2->plantCreate("Surfinia2");
+	sector2->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	if (sector2->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		sector2->irrigationController->pBinPump->init(2, 3, 10, pump2gpio, pump2led);
+		sector2->irrigationController->pBinPump->init(2, 5, 15, pump2gpio, pump2led);
 	}
 
 
 	IrrigationSector *sector3 = new IrrigationSector(3);
 	sector3->plantCreate("Trawa");
+	sector3->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector3->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	if (sector3->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		sector3->irrigationController->pBinPump->init(3, 3, 10, pump3gpio, pump3led);
+		sector3->irrigationController->pBinPump->init(3, 5, 15, pump3gpio, pump3led);
 	}
 
 
@@ -155,21 +162,17 @@ void vIrrigationControlTask( void *pvParameters )
 	}
 
 
-	bool test_cmd = true;
-	bool cmd_consumed = false;
-	uint32_t test_cnt = 0;
+	bool test_cmd1 = true;
+	bool test_cmd2 = true;
+	bool test_cmd3 = true;
+	//bool cmd_consumed = false;
+	//uint32_t test_cnt = 0;
 
     for( ;; )
     {
-
-    	tank1->checkStateOK(tank1Status);
-    	tank1Status+=test_cnt;
+    	dt_seconds = xFrequencySeconds/1000.0f;
+    	tank1->checkStateOK(tank1Status); //TODO: first check state and base pump running based on state OK
     	xQueueOverwrite( tank1StatusQueue, &tank1Status);
-
-    	pumpStateEncode(sector1->irrigationController->pBinPump->status, pumpsStatus);
-    	pumpStateEncode(sector2->irrigationController->pBinPump->status, pumpsStatus);
-    	pumpStateEncode(sector3->irrigationController->pBinPump->status, pumpsStatus);
-    	xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
 
     	if(xADCReadingsReadySemaphore != NULL)
     	{
@@ -182,27 +185,38 @@ void vIrrigationControlTask( void *pvParameters )
 				sector3->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[3]);
 		   }
     	}
+
+
     	//-----------test/development part only, to be deleted in final version----------
-    	if(test_cnt < 200)
-    	{
-    		test_cmd = true;
-    		sector1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
-    	}
-    	else if(test_cnt >= 200 && test_cnt < 400)
-    	{
-    		if(test_cnt == 250) cmd_consumed = false;
-    		test_cmd = false;
-    		sector1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
-    	}
-    	else if(test_cnt >= 400)
-		{
-    		cmd_consumed = false;
-    		test_cnt = 0;
-		}
-    	test_cnt++;
+		sectorController[0] = sector1->irrigationController->update(dt_seconds, test_cmd1);
+		sectorController[1] = sector2->irrigationController->update(dt_seconds, test_cmd2);
+		sectorController[2] = sector3->irrigationController->update(dt_seconds, test_cmd3);
+
+	   	pumpStateEncode(sector1->irrigationController->pBinPump->statusGet(), pumpsStatus);
+	    pumpStateEncode(sector2->irrigationController->pBinPump->statusGet(), pumpsStatus);
+	    pumpStateEncode(sector3->irrigationController->pBinPump->statusGet(), pumpsStatus);
+	    xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
+
+
+
+//    	if(test_cnt < 200)
+//    	{
+//    		test_cmd = true;
+//    		sector1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
+//    	}
+//    	else if(test_cnt >= 200 && test_cnt < 400)
+//    	{
+//    		if(test_cnt == 250) cmd_consumed = false;
+//    		test_cmd = false;
+//    		sector1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
+//    	}
+//    	else if(test_cnt >= 400)
+//		{
+//    		cmd_consumed = false;
+//    		test_cnt = 0;
+//		}
+//    	test_cnt++;
     	//------------------------------------------------------------------------------
-
-
 
 
     	LEDToggle(6);

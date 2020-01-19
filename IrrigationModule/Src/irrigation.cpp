@@ -21,6 +21,11 @@ void Pump::run(const double & _dt){
 
 }
 
+struct pumpstatus_s& Pump::statusGet(void){
+	return this->status;
+}
+
+
 
 /************************************/
 /*! BinaryPump class implementation */
@@ -53,17 +58,19 @@ void BinaryPump::run(const double & _dt, const bool & _cmd_start, bool & cmd_con
 	case pumpstate_t::waiting:
 		this->idletimeIncrease(_dt);
 		if(this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
-			if (this->start() == true ) cmd_consumed = true;
+			this->start();
+			cmd_consumed = true;
 		}
 
 		break;
 
 	case pumpstate_t::stopped:
 		this->idletimeIncrease(_dt);
-		if((_cmd_start == true) && (cmd_consumed == false) && (this->idletimeGetSeconds() > this->idletimeRequiredSeconds)){
-			if (this->start() == true ) cmd_consumed = true;
+		if((_cmd_start == true) && (this->idletimeGetSeconds() > this->idletimeRequiredSeconds)){
+			this->start();
+			cmd_consumed = true;
 		}
-		else if((_cmd_start == true) && (cmd_consumed == false) && (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds)){
+		else if((_cmd_start == true) && (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds)){
 			this->stateSet(pumpstate_t::waiting);
 		}
 		break;
@@ -74,7 +81,8 @@ void BinaryPump::run(const double & _dt, const bool & _cmd_start, bool & cmd_con
 			cmd_consumed = true;
 		}
 		else{
-			if(this->stop() == true) cmd_consumed = true;
+			this->stop();
+			cmd_consumed = true;
 		}
 		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->status.forced == false) this->stop();
 		break;
@@ -90,8 +98,8 @@ bool BinaryPump::start(void){
 
 	if(this->isRunning() == false){
 
-		HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
 		this->stateSet(pumpstate_t::running);
 		this->idletimeReset();
 		this->runtimeReset();
@@ -107,8 +115,8 @@ bool BinaryPump::stop(void){
 
 	if(this->isRunning() == true){
 
-		HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
 		this->stateSet(pumpstate_t::stopped);
 		this->idletimeReset();
 		this->runtimeReset();
@@ -792,15 +800,81 @@ bool WaterTank::temperatureSensorCreate(const temperaturesensortype_t & _sensort
 /*! PumpController class implementation */
 /***********************************/
 
-bool PumpController::init(void){
-	//TODO: implement this
-	return true;
-}
+uint8_t PumpController::update(const double & _dt, const bool & _activate_watering){
 
-uint8_t PumpController::update(const double & _dt){
-	//TODO: implement this
-	uint8_t errcode = 0;
-	return  errcode;
+	bool consumed = false;
+	bitset<8> errcode;
+	/*******errcode**********
+	 * 00000000
+	 * ||||||||->(0) 1 if cmd not consumed
+	 * |||||||-->(1)
+	 * ||||||--->(2)
+	 * |||||---->(3)
+	 * ||||----->(4)
+	 * |||------>(5) 1 if none of avbl pumps was correctly initialized/created
+	 * ||------->(6) 1 if controller is in wrong or not avbl mode
+	 * |-------->(7) 1 if pumpsCount is 0
+	 *************************/
+
+	if(this->pumpsCount > 0)
+	{
+		switch (this->mode)
+		{
+
+		case pumpcontrollermode_t::init:
+			errcode.set(7,true);
+			break;
+
+		case pumpcontrollermode_t::external:
+				if (this->pBinPump != nullptr)
+				{
+					if(_activate_watering)
+					{
+						this->pBinPump->run(_dt, true, consumed);
+						if(consumed == false) errcode.set(1,true);
+					}
+					else
+					{
+						this->pBinPump->run(_dt, false, consumed);
+						if(consumed == false) errcode.set(1,true);
+					}
+				}
+				else if (this->p8833Pump != nullptr)
+				{
+					if(_activate_watering)
+					{
+						this->p8833Pump->run(_dt, pumpcmd_t::start,consumed);
+						if(consumed == false) errcode.set(1,true);
+					}
+					else
+					{
+						this->p8833Pump->run(_dt, pumpcmd_t::stop,consumed);
+					}
+				}
+				else errcode.set(6,true);
+
+			break;
+
+		case pumpcontrollermode_t::manual:
+			errcode.set(7,true);
+			break;
+
+		case pumpcontrollermode_t::automatic:
+			errcode.set(7,true);
+			break;
+
+		case pumpcontrollermode_t::sleep:
+			errcode.set(7,true);
+			break;
+
+		default:
+			errcode.set(7,true);
+			break;
+		}
+	}
+	else errcode.set(8,true);
+
+	return static_cast<uint8_t>(errcode.to_ulong());
 }
 
 bool PumpController::pumpCreate(const pumptype_t & _pumptype){
@@ -887,15 +961,15 @@ bool PumpController::moisturesensorCreate(const moisturesensortype_t & _sensorty
 
 bool PumpController::modeSet(const pumpcontrollermode_t & _mode){
 
-	bool success = true;
+	bool changed = true;
 
-	if (this->mode != _mode)
+	if (this->mode != _mode && _mode != pumpcontrollermode_t::init)
 	{
 		this->mode = _mode;
 	}
-	else success = false;
+	else changed = false;
 
-	return success;
+	return changed;
 }
 
 const pumpcontrollermode_t&	PumpController::modeGet(void){
