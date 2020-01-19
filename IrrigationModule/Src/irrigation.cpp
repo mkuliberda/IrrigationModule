@@ -39,8 +39,8 @@ bool BinaryPump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSec
 	this->led.port = _led.port;
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
-	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
 	this->stateSet(pumpstate_t::stopped);
 
 	return true;
@@ -130,8 +130,8 @@ void BinaryPump::forcestart(void){
 
 	if(this->isRunning() == false) this->runtimeReset();
 
-	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
 	this->stateSet(pumpstate_t::running);
 	this->status.forced = true;
 }
@@ -139,8 +139,8 @@ void BinaryPump::forcestop(void){
 
 	if (this->isRunning() == true) this->idletimeReset();
 
-	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
 	this->stateSet(pumpstate_t::stopped);
 	this->status.forced = true;
 }
