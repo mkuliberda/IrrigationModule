@@ -26,16 +26,16 @@ bool DS18B20::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHand
 	this->gpio.port = _gpio.port;
 	this->gpio.pin = _gpio.pin;
 
-	this->gpioSetOutput();
-	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_SET);
-	this->delay_us(1000);
-	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);
-	this->delay_us(1000);
-	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_SET);
-	this->delay_us(2000);
-	//this->valid = this->OneWire_Reset();
-	//this->valid = this->prepare();
-	this->valid = true;
+//	this->gpioSetOutput();
+//	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_SET);
+//	this->delay_us(1000);
+//	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);
+//	this->delay_us(1000);
+//	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_SET);
+//	this->delay_us(2000);
+
+	this->valid = this->prepare();
+	//this->valid = true;
 	if (this->valid != true) success = false;
 
 	return success;
@@ -291,7 +291,7 @@ float& DS18B20::temperatureCelsiusRead(const double & _dt){
 		this->conversiontimeIncrease(_dt);
 	}
 
-	if(/*this->conversiontimeGet() > 0.75 &&*/ this->OneWire_ReadBit()){
+	if(this->conversiontimeGet() > 0.75 && this->OneWire_ReadBit()){
 
 		this->conversionflagReset();
 		this->OneWire_Reset();
@@ -306,12 +306,12 @@ float& DS18B20::temperatureCelsiusRead(const double & _dt){
 		}
 
 		/* Calculate CRC */
-		crc = OneWire_CRC8(data, 8);
+		crc = this->OneWire_CRC8(data, 8);
 
 		/* Check if CRC is ok */
 		if (crc != data[8])
 			/* CRC invalid */
-		//TODO: take action
+			//TODO: take action
 
 
 		/* First two bytes of scratchpad are temperature values */
