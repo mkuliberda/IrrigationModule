@@ -21,6 +21,10 @@
 #include <numeric>
 #include <irrigation.h>
 
+struct plant_s{
+	string name;
+	float soilmoisturePercent;
+};
 
 using namespace std;
 
@@ -72,7 +76,11 @@ public:
 
 	const uint8_t& sectorGet(void);
 	bool plantCreate(const string & _name);
-	bool update(const double & _dt);
+	uint8_t update(const double & _dt, const bool & _activate_watering);
+	uint8_t update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt);
+	uint8_t& plantscountGet(void);
+	struct plant_s planthealthGet(const string & _name);
+
 
 };
 

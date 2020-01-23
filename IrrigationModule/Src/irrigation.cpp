@@ -46,49 +46,56 @@ bool BinaryPump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSec
 	return true;
 }
 
-void BinaryPump::run(const double & _dt, const bool & _cmd_start, bool & cmd_consumed){
+void BinaryPump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed){
 
-	switch (this->stateGet())
-	{
-	case pumpstate_t::init:
-		this->stop();
-		cmd_consumed = true;
-		break;
+	if(_cmd != pumpcmd_t::reverse){
 
-	case pumpstate_t::waiting:
-		this->idletimeIncrease(_dt);
-		if(this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
-			this->start();
-			cmd_consumed = true;
-		}
-
-		break;
-
-	case pumpstate_t::stopped:
-		this->idletimeIncrease(_dt);
-		if((_cmd_start == true) && (this->idletimeGetSeconds() > this->idletimeRequiredSeconds)){
-			this->start();
-			cmd_consumed = true;
-		}
-		else if((_cmd_start == true) && (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds)){
-			this->stateSet(pumpstate_t::waiting);
-		}
-		break;
-
-	case pumpstate_t::running:
-		this->runtimeIncrease(_dt);
-		if(_cmd_start == true){
-			cmd_consumed = true;
-		}
-		else{
+		switch (this->stateGet())
+		{
+		case pumpstate_t::init:
 			this->stop();
 			cmd_consumed = true;
-		}
-		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->status.forced == false) this->stop();
-		break;
+			break;
 
-	default:
-		break;
+		case pumpstate_t::waiting:
+			this->idletimeIncrease(_dt);
+			if(this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
+				this->start();
+				cmd_consumed = true;
+			}
+
+			break;
+
+		case pumpstate_t::stopped:
+			this->idletimeIncrease(_dt);
+			if((_cmd == pumpcmd_t::start) && (this->idletimeGetSeconds() > this->idletimeRequiredSeconds)){
+				this->start();
+				cmd_consumed = true;
+			}
+			else if((_cmd == pumpcmd_t::start) && (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds)){
+				this->stateSet(pumpstate_t::waiting);
+			}
+			break;
+
+		case pumpstate_t::running:
+			this->runtimeIncrease(_dt);
+			if(_cmd == pumpcmd_t::start){
+				cmd_consumed = true;
+			}
+			else{
+				this->stop();
+				cmd_consumed = true;
+			}
+			if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->status.forced == false) this->stop(); //TODO: how to handle force.... commands?
+			break;
+
+		default:
+			break;
+		}
+	}
+	else{
+		//Invalid command, not consumed, let's stop pump for safety
+		this->stop();
 	}
 }
 
@@ -352,253 +359,6 @@ double& DRV8833Pump::revtimeGetSeconds(void){
 }
 
 /***********************************/
-/*! MoistureSensor class implementation */
-/***********************************/
-
-moisturesensortype_t& MoistureSensor::typeGet(void){
-	return this->type;
-}
-
-sensorinterfacetype_t& MoistureSensor::interfacetypeGet(void){
-	return this->interfacetype;
-}
-
-float& MoistureSensor::percentGet(void){
-	return this->moisturePercent;
-}
-
-/***********************************/
-/*! AnalogDMAMoistureSensor class implementation */
-/***********************************/
-
-void AnalogDMAMoistureSensor::voltsUpdate(void){
-	this->moistureVolts = this->moistureRaw * 3.0f/4095.0f;
-}
-
-void AnalogDMAMoistureSensor::percentUpdate(void){
-	this->moisturePercent = this->moistureRaw * 100.0f/4095.0f;
-}
-
-float AnalogDMAMoistureSensor::read(void){
-	return 0; //Not used in this type of sensor
-}
-
-bool& AnalogDMAMoistureSensor::isValid(void){
-	return this->valid;
-}
-
-void AnalogDMAMoistureSensor::rawUpdate(const uint16_t & _raw_value){
-	this->moistureRaw = _raw_value;
-	this->percentUpdate();
-	this->voltsUpdate();
-}
-
-float& AnalogDMAMoistureSensor::voltsGet(void){
-	return this->moistureVolts;
-}
-
-/******************************************/
-/*! WaterLevelSensor class implementation */
-/******************************************/
-
-waterlevelsensorsubtype_t&  WaterLevelSensor::subtypeGet(void){
-	return this->subtype;
-}
-
-waterlevelsensortype_t& WaterLevelSensor::typeGet(void){
-	return this->type;
-}
-
-sensorinterfacetype_t& WaterLevelSensor::interfacetypeGet(void){
-	return this->interfacetype;
-}
-
-
-/*************************************************/
-/*! OpticalWaterLevelSensor class implementation */
-/*************************************************/
-
-bool OpticalWaterLevelSensor::init(const float & _mountpositionMeters, const struct gpio_s & _pinout){
-	this->mountpositionMeters = _mountpositionMeters;
-	this->pinout.pin = _pinout.pin;
-	this->pinout.port = _pinout.port;
-	this->read();
-	return true;
-}
-
-const float& OpticalWaterLevelSensor::mountpositionGet(void){
-	return this->mountpositionMeters;
-}
-
-void OpticalWaterLevelSensor::read(void){
-	if (HAL_GPIO_ReadPin(this->pinout.port, this->pinout.pin) == GPIO_PIN_SET) this->state = fixedwaterlevelsensorstate_t::dry;
-	else this->state = fixedwaterlevelsensorstate_t::wet;
-}
-
-bool OpticalWaterLevelSensor::isValid(void){
-	return this->state != fixedwaterlevelsensorstate_t::undetermined ? true : false;
-}
-
-bool OpticalWaterLevelSensor::isSubmersed(void){
-	this->read();
-	return this->state == fixedwaterlevelsensorstate_t::wet ? true : false;
-}
-
-/******************************************/
-/*! TemperatureSensor class implementation */
-/******************************************/
-
-temperaturesensortype_t& TemperatureSensor::typeGet(void){
-	return this->type;
-}
-
-sensorinterfacetype_t& TemperatureSensor::interfacetypeGet(void){
-	return this->interfacetype;
-}
-
-/******************************************/
-/*! DS18B20 class implementation */
-/******************************************/
-bool DS18B20::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle){
-
-	this->gpio.port = _gpio.port;
-	this->gpio.pin = _gpio.pin;
-	this->timer = _tim_baseHandle;
-	this->valid = this->prep();
-	return this->valid;
-}
-
-bool DS18B20::prep(void){
-
-	this->gpioSetOutput ();   // set the pin as output
-	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin low
-	this->delay_us (480);   // delay according to datasheet
-
-	this->gpioSetInput ();    // set the pin as input
-	this->delay_us (80);    // delay according to datasheet
-
-	if (!(HAL_GPIO_ReadPin (this->gpio.port, this->gpio.pin)))    // if the pin is low i.e the presence pulse is there
-	{
-		this->delay_us (400);  // wait for 400 us
-		return true;
-	}
-
-	else
-	{
-		this->delay_us (400);
-		return false;
-	}
-}
-
-/* delay in microseconds */
-void DS18B20::delay_us (const uint32_t & _us){
-	__HAL_TIM_SET_COUNTER(this->timer,0);
-	while ((__HAL_TIM_GET_COUNTER(this->timer))<_us);
-}
-
-void DS18B20::gpioSetInput (void){
-
-	GPIO_InitTypeDef GPIO_InitStruct;
-	GPIO_InitStruct.Pin = this->gpio.pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init(this->gpio.port, &GPIO_InitStruct);
-}
-
-
-void DS18B20::gpioSetOutput (void){
-
-	GPIO_InitTypeDef GPIO_InitStruct;
-	GPIO_InitStruct.Pin = this->gpio.pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(this->gpio.port, &GPIO_InitStruct);
-}
-
-void DS18B20::write (const uint8_t & _data){
-
-	this->gpioSetOutput();   // set as output
-
-	for (int i=0; i<8; i++)
-	{
-
-		if ((_data & (1<<i))!=0)  // if the bit is high
-		{
-			// write 1
-
-			this->gpioSetOutput();  // set as output
-			HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin LOW
-			this->delay_us(1);  // wait for  us
-
-			this->gpioSetInput();  // set as input
-			this->delay_us(60);  // wait for 60 us
-		}
-
-		else  // if the bit is low
-		{
-			// write 0
-
-			this->gpioSetOutput();
-			HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin LOW
-			this->delay_us(60);  // wait for 60 us
-
-			this->gpioSetInput();
-		}
-	}
-}
-
-
-uint8_t DS18B20::read (void){
-
-	uint8_t value=0;
-
-	this->gpioSetInput();
-
-	for (int i=0;i<8;i++)
-	{
-		this->gpioSetOutput();   // set as output
-
-		HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the data pin LOW
-		this->delay_us(2);  // wait for 2 us
-
-		this->gpioSetInput();  // set as input
-		if (HAL_GPIO_ReadPin (this->gpio.port, this->gpio.pin))  // if the pin is HIGH
-		{
-			value |= 1<<i;  // read = 1
-		}
-		this->delay_us(60);  // wait for 60 us
-	}
-	return value;
-}
-
-bool& DS18B20::isValid(void){
-	return this->valid;
-}
-
-float DS18B20::temperatureCelsiusRead(void){
-
-	uint8_t temp_l = 0, temp_h = 0;
-	uint16_t temp = 0;
-
-	this->prep (); //TODO: is this required here?
-	this->write (0xCC);  // skip ROM
-	this->write (0x44);  // convert t
-
-	HAL_Delay (800);
-
-	this->prep (); //TODO: is this required here?
-	this->write (0xCC);  // skip ROM
-	this->write (0xBE);  // Read Scratchpad
-
-	temp_l = this->read();
-	temp_h = this->read();
-	temp = (temp_h<<8)|temp_l;
-
-	return static_cast<float> (temp/16);
-}
-
-/***********************************/
 /*! WaterTank class implementation */
 /***********************************/
 
@@ -626,7 +386,7 @@ WaterTank::contentstate_t& WaterTank::stateGet(void){
 	return this->waterstate;
 }
 
-bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
+bool WaterTank::checkStateOK(const double & _dt, uint32_t & errcodeBitmask){
 
 	/******************************errcodeBitmask****************************************
 	 * *Upper 16 bits										Lower 16 bits
@@ -651,39 +411,46 @@ bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 
 	uint8_t temp_waterlevelPercent = 0;
 	uint8_t waterlevelPercent = 0;
-	bool 	isOK = true;
+	bool isOK = true;
+	bool tempReadingValid = false;
 	bitset<32> errcode; errcode.set();  //initialize bitset and set all bits to 1
 
 
 	if (this->temperatureSensorsCount > 0){
 
-		const uint8_t temps_count = this->vTemperatureSensors.size();
 		vector <float> vTemperature;
 
-		for(uint8_t i=0; i<temps_count; i++){
+		for(uint8_t i = 0; i < this->temperatureSensorsCount; i++){
 			if(this->vTemperatureSensors[i].isValid() == true){
-				vTemperature[i] = this->vTemperatureSensors[i].temperatureCelsiusRead();
+				float temp = this->vTemperatureSensors[i].temperatureCelsiusRead(_dt); //TODO: too long delay issue, maybe move sensor reading to separate task?
+				vTemperature.push_back(temp);
 				errcode.reset(20+i);
+				tempReadingValid = true;
 			}
 		}
 
-		this->mean_watertemperatureCelsius = (accumulate(vTemperature.begin(), vTemperature.end(), 0))/vTemperature.size();
+		if (tempReadingValid == true){
+			this->mean_watertemperatureCelsius = (accumulate(vTemperature.begin(), vTemperature.end(), 0))/vTemperature.size();
 
-		if(this->mean_watertemperatureCelsius < 0.0){
-			this->stateSet(contentstate_t::frozen);
-			errcode.reset(17);
-			isOK = false;
-		}
-		else if (this->mean_watertemperatureCelsius > 100.0)
-		{
-			this->stateSet(contentstate_t::boiling);
-			errcode.reset(16);
-			isOK = false;
+			if(this->mean_watertemperatureCelsius < 0.0){
+				this->stateSet(contentstate_t::frozen);
+				errcode.reset(17);
+				isOK = false;
+			}
+			else if (this->mean_watertemperatureCelsius > 100.0)
+			{
+				this->stateSet(contentstate_t::boiling);
+				errcode.reset(16);
+				isOK = false;
+			}
+			else{
+				this->stateSet(contentstate_t::liquid);
+				errcode.reset(16);
+				errcode.reset(17);
+			}
 		}
 		else{
-			this->stateSet(contentstate_t::liquid);
-			errcode.reset(16);
-			errcode.reset(17);
+			//isOK = false; let's let it work without temperature sensor for now, but with errorcodes
 		}
 	}
 	else{
@@ -693,8 +460,7 @@ bool WaterTank::checkStateOK(uint32_t & errcodeBitmask){
 
 
 	if (this->waterlevelSensorsCount > 0){
-		uint8_t owls_count = this->vOpticalWLSensors.size();
-		for(uint8_t i=0; i<owls_count; i++){
+		for(uint8_t i=0; i<this->waterlevelSensorsCount; i++){
 			if(this->vOpticalWLSensors[i].isValid() == true){
 				errcode.reset(22+i);
 				if (this->vOpticalWLSensors[i].isSubmersed()){
@@ -830,12 +596,12 @@ uint8_t PumpController::update(const double & _dt, const bool & _activate_wateri
 				{
 					if(_activate_watering)
 					{
-						this->pBinPump->run(_dt, true, consumed);
+						this->pBinPump->run(_dt, pumpcmd_t::start, consumed);
 						if(consumed == false) errcode.set(1,true);
 					}
 					else
 					{
-						this->pBinPump->run(_dt, false, consumed);
+						this->pBinPump->run(_dt, pumpcmd_t::stop, consumed);
 						if(consumed == false) errcode.set(1,true);
 					}
 				}
@@ -843,12 +609,12 @@ uint8_t PumpController::update(const double & _dt, const bool & _activate_wateri
 				{
 					if(_activate_watering)
 					{
-						this->p8833Pump->run(_dt, pumpcmd_t::start,consumed);
+						this->p8833Pump->run(_dt, pumpcmd_t::start, consumed);
 						if(consumed == false) errcode.set(1,true);
 					}
 					else
 					{
-						this->p8833Pump->run(_dt, pumpcmd_t::stop,consumed);
+						this->p8833Pump->run(_dt, pumpcmd_t::stop, consumed);
 					}
 				}
 				else errcode.set(6,true);

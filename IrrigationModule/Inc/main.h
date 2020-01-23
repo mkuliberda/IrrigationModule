@@ -142,8 +142,8 @@
 #define T1_WATER_LVL_H_GPIO_Port GPIOC
 #define T1_WATER_LVL_L_Pin GPIO_PIN_7
 #define T1_WATER_LVL_L_GPIO_Port GPIOC
-#define ONEWIRE_Pin GPIO_PIN_8
-#define ONEWIRE_GPIO_Port GPIOC
+#define DS18B20_1_Pin GPIO_PIN_8
+#define DS18B20_1_GPIO_Port GPIOC
 #define DM_Pin GPIO_PIN_11
 #define DM_GPIO_Port GPIOA
 #define DP_Pin GPIO_PIN_12

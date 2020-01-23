@@ -20,12 +20,10 @@
 #include <utilities.h>
 #include <bitset>
 #include <numeric>
+#include "optical_waterlevel_sensor.h"
+#include "analog_moisture_sensor.h"
+#include "ds18b20.h"
 
-
-struct gpio_s{
-	GPIO_TypeDef* port;
-	uint16_t pin;
-};
 
 struct pumpstatus_s {
 	uint8_t id = 0;
@@ -60,44 +58,6 @@ enum class pumpcmd_t{
 	reverse
 };
 
-enum class fixedwaterlevelsensorstate_t{
-	undetermined,
-	wet,
-	dry
-};
-
-enum class waterlevelsensorsubtype_t{
-	unknown,
-	fixed,
-	floating
-};
-
-enum class waterlevelsensortype_t{
-	unknown,
-	optical,
-	capacitive,
-	resistive
-};
-
-enum class sensorinterfacetype_t {
-	gpio,
-	analog,
-	digital_I2C,
-	digital_SPI,
-	digital_1Wire,
-	digital_UART,
-	digital_CAN
-};
-
-enum class temperaturesensortype_t{
-	generic,
-	ds18b20
-};
-
-enum class moisturesensortype_t{
-	generic,
-	capacitive_noshield
-};
 
 enum class pumpcontrollermode_t{
 	init,
@@ -171,7 +131,7 @@ public:
 	};
 
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
-	void 						run(const double & _dt, const bool & _cmd_start, bool & cmd_consumed);
+	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
 	pumpstate_t& 				stateGet(void) override;
 	void 						forcestart(void);
@@ -241,161 +201,6 @@ public:
 
 };
 
-class MoistureSensor{
-
-protected:
-
-	moisturesensortype_t 			type;
-	sensorinterfacetype_t			interfacetype;
-	float 							moisturePercent;
-	bool							valid;
-
-	moisturesensortype_t& 			typeGet(void);
-	sensorinterfacetype_t& 			interfacetypeGet(void);
-	virtual void 					percentUpdate(void) = 0;
-
-public:
-
-	MoistureSensor():
-	moisturePercent(0),
-	valid(false)
-	{
-		this->type = moisturesensortype_t::generic;
-	};
-
-	virtual ~MoistureSensor(){};
-
-	virtual float		 			read(void) = 0;
-	virtual bool&					isValid(void) = 0;
-	float&							percentGet(void);
-
-};
-
-
-class AnalogDMAMoistureSensor: MoistureSensor{
-
-private:
-
-	uint16_t						moistureRaw;
-	float							moistureVolts;
-
-	void		 					percentUpdate(void);
-	void 							voltsUpdate(void);
-
-public:
-
-	AnalogDMAMoistureSensor():
-	moistureRaw(0),
-	moistureVolts(0)
-	{
-		this->interfacetype = sensorinterfacetype_t::analog;
-	};
-
-	~AnalogDMAMoistureSensor(){};
-
-	float		 					read(void);
-	bool&							isValid(void);
-	void							rawUpdate(const uint16_t & _raw_value);
-	float&							voltsGet(void);
-
-};
-
-class WaterLevelSensor{
-
-protected:
-
-	waterlevelsensortype_t 				type;
-	waterlevelsensorsubtype_t 			subtype;
-	sensorinterfacetype_t				interfacetype;
-
-	virtual waterlevelsensorsubtype_t& 	subtypeGet(void);
-	virtual waterlevelsensortype_t&		typeGet(void);
-	virtual sensorinterfacetype_t& 		interfacetypeGet(void);
-
-public:
-
-	WaterLevelSensor(){};
-
-	virtual ~WaterLevelSensor(){};
-
-};
-
-
-class OpticalWaterLevelSensor: public WaterLevelSensor{
-
-private:
-
-	float 							mountpositionMeters;
-	fixedwaterlevelsensorstate_t 	state;
-	struct gpio_s 					pinout;
-
-	void 							read(void);
-
-public:
-
-	OpticalWaterLevelSensor():
-		mountpositionMeters(0),
-		state(fixedwaterlevelsensorstate_t::undetermined)
-		{
-			this->type = waterlevelsensortype_t::optical;
-			this->subtype = waterlevelsensorsubtype_t::fixed;
-			this->interfacetype = sensorinterfacetype_t::gpio;
-		};
-
-	const float& 					mountpositionGet(void);
-	bool 							init(const float & _mountpositionMeters, const struct gpio_s & _pinout);
-	bool 							isValid(void);
-	bool 							isSubmersed(void);
-
-};
-
-class TemperatureSensor{
-
-protected:
-
-	temperaturesensortype_t 		type;
-	sensorinterfacetype_t			interfacetype;
-
-	temperaturesensortype_t& 		typeGet(void);
-	sensorinterfacetype_t& 			interfacetypeGet(void);
-
-public:
-
-	TemperatureSensor(){};
-
-	virtual ~TemperatureSensor(){};
-
-};
-
-class DS18B20: public TemperatureSensor{
-
-private:
-
-	bool 							valid;
-	struct gpio_s 					gpio;
-	TIM_HandleTypeDef* 				timer;
-
-	bool 							prep(void);
-	void 							delay_us (const uint32_t & _us);
-	void 							gpioSetInput (void);
-	void 							gpioSetOutput (void);
-	void 							write (const uint8_t & _data);
-	uint8_t 						read(void);
-
-public:
-
-	DS18B20():
-		valid(false)
-	{
-		this->interfacetype = sensorinterfacetype_t::digital_1Wire;
-		this->type = temperaturesensortype_t::ds18b20;
-	};
-
-	bool 							init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle);
-	bool& 							isValid(void);
-	float 							temperatureCelsiusRead(void);
-
-};
 
 class WaterTank{
 
@@ -428,10 +233,10 @@ private:
 	contentstate_t 						waterstate;
 	const double 						tankheightMeters;
 	const double 						tankvolumeLiters;
-	const int8_t 						waterlevelSensorsLimit;
-	int8_t								waterlevelSensorsCount;
-	const int8_t 						temperatureSensorsLimit;
-	int8_t								temperatureSensorsCount;
+	const uint8_t 						waterlevelSensorsLimit;
+	uint8_t								waterlevelSensorsCount;
+	const uint8_t 						temperatureSensorsLimit;
+	uint8_t								temperatureSensorsCount;
 
 	void 								waterlevelSet(const contentlevel_t & _waterlevel);
 	contentlevel_t&						waterlevelGet(void);
@@ -460,7 +265,7 @@ public:
 	vector <DS18B20> 					vTemperatureSensors;
 
 	bool 								init(void);
-	bool 								checkStateOK(uint32_t & errcodeBitmask);
+	bool 								checkStateOK(const double &_dt, uint32_t & errcodeBitmask);
 	float& 								temperatureCelsiusGet(void);
 	uint8_t		 						waterlevelPercentGet(void);
 	bool 								waterlevelSensorCreate(const waterlevelsensortype_t & _sensortype);
@@ -472,10 +277,10 @@ class PumpController{
 
 private:
 
-	const int8_t 						pumpsLimit = 1;
-	int8_t								pumpsCount;
-	const int8_t						moisturesensorsLimit = 10;
-	int8_t								moisturesensorsCount;
+	const uint8_t 						pumpsLimit = 1;
+	uint8_t								pumpsCount;
+	const uint8_t						moisturesensorsLimit = 10;
+	uint8_t								moisturesensorsCount;
 	pumpcontrollermode_t				mode;
 
 public:
@@ -501,6 +306,7 @@ public:
 	bool 								moisturesensorCreate(const moisturesensortype_t & _sensortype);
 	bool								modeSet(const pumpcontrollermode_t & _mode);
 	const pumpcontrollermode_t&			modeGet(void);
+
 
 };
 

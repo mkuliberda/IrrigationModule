@@ -99,7 +99,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, PUMP1_Pin|PUMP2_Pin|PUMP3_Pin|PUMP4_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ONEWIRE_GPIO_Port, ONEWIRE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(DS18B20_1_GPIO_Port, DS18B20_1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PEPin PEPin PEPin PEPin 
                            PEPin */
@@ -167,11 +167,11 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PtPin */
-  GPIO_InitStruct.Pin = ONEWIRE_Pin;
+  GPIO_InitStruct.Pin = DS18B20_1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(ONEWIRE_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(DS18B20_1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PAPin PAPin */
   GPIO_InitStruct.Pin = DM_Pin|DP_Pin;
