@@ -422,7 +422,7 @@ bool WaterTank::checkStateOK(const double & _dt, uint32_t & errcodeBitmask){
 
 		for(uint8_t i = 0; i < this->temperatureSensorsCount; i++){
 			if(this->vTemperatureSensors[i].isValid() == true){
-				float temp = this->vTemperatureSensors[i].temperatureCelsiusRead(_dt); //TODO: too long delay issue, maybe move sensor reading to separate task?
+				float temp = this->vTemperatureSensors[i].temperatureCelsiusRead(_dt);
 				vTemperature.push_back(temp);
 				errcode.reset(20+i);
 				tempReadingValid = true;
@@ -430,7 +430,7 @@ bool WaterTank::checkStateOK(const double & _dt, uint32_t & errcodeBitmask){
 		}
 
 		if (tempReadingValid == true){
-			this->mean_watertemperatureCelsius = (accumulate(vTemperature.begin(), vTemperature.end(), 0))/vTemperature.size();
+			this->mean_watertemperatureCelsius = (accumulate(vTemperature.begin(), vTemperature.end(), 0))/this->temperatureSensorsCount;
 
 			if(this->mean_watertemperatureCelsius < 0.0){
 				this->stateSet(contentstate_t::frozen);
@@ -450,12 +450,11 @@ bool WaterTank::checkStateOK(const double & _dt, uint32_t & errcodeBitmask){
 			}
 		}
 		else{
-			//isOK = false; let's let it work without temperature sensor for now, but with errorcodes
+			//if temperature reading isn't valid then don't update state
 		}
 	}
 	else{
-		//let's let it work without temperature sensor for now, but with errorcodes
-		this->stateSet(contentstate_t::liquid);
+		//isOK = false;//let's let it work without temperature sensor
 	}
 
 
