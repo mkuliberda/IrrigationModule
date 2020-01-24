@@ -27,8 +27,8 @@
 #define ONEWIRE_CMD_MATCHROM			0x55
 #define ONEWIRE_CMD_SKIPROM				0xCC
 
-#define DS18B20_FAMILY_CODE						0x28
-#define DS18B20_CMD_ALARMSEARCH				0xEC
+#define DS18B20_FAMILY_CODE				0x28
+#define DS18B20_CMD_ALARMSEARCH			0xEC
 
 /* DS18B20 read temperature command */
 #define DS18B20_CMD_CONVERTTEMP			0x44 	/* Convert temperature */
@@ -62,8 +62,8 @@ private:
 	double							conversiontimeSeconds;
 	bool							conversionRunning;
 	float							temperatureCelsius;
+	uint8_t							ROM[8];
 
-	bool 							prepare(void);
 	void 							delay_us (const uint32_t & _us);
 	void							conversiontimeIncrease(const double & _dt);
 	double&							conversiontimeGet(void);
@@ -76,7 +76,6 @@ private:
 	void 							gpioSetOutput (void);
 	inline uint8_t 					OneWire_ReadBit(void);
 	inline void 					OneWire_WriteBit(const uint8_t & _bit);
-	//void 							write (const uint8_t & _data);
 	uint8_t							OneWire_ReadByte(void);
 	void 							OneWire_WriteByte(uint8_t byte);
 	inline uint8_t 					OneWire_Reset(void);
@@ -94,7 +93,7 @@ public:
 		this->type = temperaturesensortype_t::ds18b20;
 	};
 
-	bool 							init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle);
+	bool& 							init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle);
 	bool& 							isValid(void);
 	float& 							temperatureCelsiusRead(const double & _dt);
 

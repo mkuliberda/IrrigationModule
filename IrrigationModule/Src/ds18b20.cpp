@@ -17,50 +17,25 @@ void DS18B20::delay_us (const uint32_t & _us){
 	while (this->ptimer->Instance->CNT <= _us);
 }
 
-bool DS18B20::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle){
+bool& DS18B20::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle){
 
-	bool success = true;
-
+	this->valid = true;
 	this->ptimer = _tim_baseHandle;
-	if(HAL_TIM_Base_Start(ptimer) != HAL_OK) success = false;
 	this->gpio.port = _gpio.port;
 	this->gpio.pin = _gpio.pin;
 
-//	this->gpioSetOutput();
-//	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_SET);
-//	this->delay_us(1000);
-//	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);
-//	this->delay_us(1000);
-//	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_SET);
-//	this->delay_us(2000);
+	if(HAL_TIM_Base_Start(ptimer) != HAL_OK) this->valid = false;
 
-	this->valid = this->prepare();
-	//this->valid = true;
-	if (this->valid != true) success = false;
-
-	return success;
-}
-
-bool DS18B20::prepare(void){
-
-	this->gpioSetOutput ();   // set the pin as output
-	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin low
-	this->delay_us (500);   // delay according to datasheet 480
-
-	this->gpioSetInput ();    // set the pin as input
-	this->delay_us (80);    // delay according to datasheet
-
-	if (!(HAL_GPIO_ReadPin (this->gpio.port, this->gpio.pin)))    // if the pin is low i.e the presence pulse is there
-	{
-		this->delay_us (410);  // wait for 400 us
-		return true;
+	if(this->OneWire_Reset()){
+		this->OneWire_WriteByte(ONEWIRE_CMD_READROM);
+		for(uint8_t i=0; i<8; i++) ROM[i] = this->OneWire_ReadByte();
+		if (ROM[0] != DS18B20_FAMILY_CODE) this->valid = false;
+	}
+	else{
+		this->valid = false;
 	}
 
-	else
-	{
-		this->delay_us (410);
-		return false;
-	}
+	return this->valid;
 }
 
 void DS18B20::conversiontimeIncrease(const double & _dt){
@@ -94,7 +69,6 @@ void DS18B20::conversionflagReset(void){
 	this->conversionRunning = false;
 }
 
-
 void DS18B20::gpioSetInput (void){
 
 	GPIO_InitTypeDef GPIO_InitStruct;
@@ -110,7 +84,7 @@ void DS18B20::gpioSetOutput (void){
 
 	GPIO_InitTypeDef GPIO_InitStruct;
 	GPIO_InitStruct.Pin = this->gpio.pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; //TODO: OD?
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
 	HAL_GPIO_Init(this->gpio.port, &GPIO_InitStruct);
@@ -118,56 +92,27 @@ void DS18B20::gpioSetOutput (void){
 
 inline uint8_t DS18B20::OneWire_Reset(void)
 {
-	uint8_t i;
-
 	/* Line low, and wait 480us */
 	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);
 	this->gpioSetOutput();
-	this->delay_us(480);
-	this->delay_us(20);
+	this->delay_us(500); //480
+
 	/* Release line and wait for 70us */
 	this->gpioSetInput();
-	this->delay_us(70);
+	this->delay_us(80); //70
 	/* Check bit value */
-	i = HAL_GPIO_ReadPin(this->gpio.port, this->gpio.pin);
+	if (!(HAL_GPIO_ReadPin (this->gpio.port, this->gpio.pin)))    // if the pin is low i.e the presence pulse is there
+	{
+		this->delay_us (410);  // wait for 400 us
+		return true;
+	}
 
-	/* Delay for 410 us */
-	this->delay_us(410);
-	/* Return value of presence pulse, 0 = OK, 1 = ERROR */
-	return i;
+	else
+	{
+		this->delay_us (410);
+		return false;
+	}
 }
-
-//void DS18B20::write (const uint8_t & _data){
-//
-//	this->gpioSetOutput();   // set as output
-//
-//	for (int i=0; i<8; i++)
-//	{
-//
-//		if ((_data & (1<<i))!=0)  // if the bit is high
-//		{
-//			// write 1
-//
-//			this->gpioSetOutput();  // set as output
-//			HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin LOW
-//			this->delay_us(1);  // wait for  us
-//
-//			this->gpioSetInput();  // set as input
-//			this->delay_us(60);  // wait for 60 us
-//		}
-//
-//		else  // if the bit is low
-//		{
-//			// write 0
-//
-//			this->gpioSetOutput();
-//			HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);  // pull the pin LOW
-//			this->delay_us(60);  // wait for 60 us
-//
-//			this->gpioSetInput();
-//		}
-//	}
-//}
 
 inline void DS18B20::OneWire_WriteBit(const uint8_t & _bit)
 {
@@ -285,7 +230,7 @@ float& DS18B20::temperatureCelsiusRead(const double & _dt){
 	if (this->conversionflagGet() == false){
 		this->OneWire_Reset();
 		this->OneWire_WriteByte(ONEWIRE_CMD_SKIPROM);
-		this->conversionStart();  // convert t
+		this->conversionStart();
 	}
 	else{
 		this->conversiontimeIncrease(_dt);
@@ -309,65 +254,61 @@ float& DS18B20::temperatureCelsiusRead(const double & _dt){
 		crc = this->OneWire_CRC8(data, 8);
 
 		/* Check if CRC is ok */
-		if (crc != data[8])
-			/* CRC invalid */
-			//TODO: take action
+		if (crc == data[8]){
+			/* First two bytes of scratchpad are temperature values */
+			temperature = data[0] | (data[1] << 8);
+
+			/* Reset line */
+			//this->OneWire_Reset();
+
+			/* Check if temperature is negative */
+			if (temperature & 0x8000)
+			{
+				/* Two's complement, temperature is negative */
+				temperature = ~temperature + 1;
+				minus = 1;
+			}
 
 
-		/* First two bytes of scratchpad are temperature values */
-		temperature = data[0] | (data[1] << 8);
+			/* Get sensor resolution */
+			resolution = ((data[4] & 0x60) >> 5) + 9;
 
-		/* Reset line */
-		this->OneWire_Reset();
 
-		/* Check if temperature is negative */
-		if (temperature & 0x8000)
-		{
-			/* Two's complement, temperature is negative */
-			temperature = ~temperature + 1;
-			minus = 1;
+			/* Store temperature integer digits and decimal digits */
+			digit = temperature >> 4;
+			digit |= ((temperature >> 8) & 0x7) << 4;
+
+			/* Store decimal digits */
+			switch (resolution)
+			{
+				case 9:
+					decimal = (temperature >> 3) & 0x01;
+					decimal *= (float)DS18B20_DECIMAL_STEPS_9BIT;
+				break;
+				case 10:
+					decimal = (temperature >> 2) & 0x03;
+					decimal *= (float)DS18B20_DECIMAL_STEPS_10BIT;
+				 break;
+				case 11:
+					decimal = (temperature >> 1) & 0x07;
+					decimal *= (float)DS18B20_DECIMAL_STEPS_11BIT;
+				break;
+				case 12:
+					decimal = temperature & 0x0F;
+					decimal *= (float)DS18B20_DECIMAL_STEPS_12BIT;
+				 break;
+				default:
+					decimal = 0xFF;
+					digit = 0;
+			}
+
+			/* Check for negative part */
+			decimal = digit + decimal;
+			if (minus)
+				decimal = 0 - decimal;
+
+			this->temperatureCelsius = decimal;
 		}
-
-
-		/* Get sensor resolution */
-		resolution = ((data[4] & 0x60) >> 5) + 9;
-
-
-		/* Store temperature integer digits and decimal digits */
-		digit = temperature >> 4;
-		digit |= ((temperature >> 8) & 0x7) << 4;
-
-		/* Store decimal digits */
-		switch (resolution)
-		{
-			case 9:
-				decimal = (temperature >> 3) & 0x01;
-				decimal *= (float)DS18B20_DECIMAL_STEPS_9BIT;
-			break;
-			case 10:
-				decimal = (temperature >> 2) & 0x03;
-				decimal *= (float)DS18B20_DECIMAL_STEPS_10BIT;
-			 break;
-			case 11:
-				decimal = (temperature >> 1) & 0x07;
-				decimal *= (float)DS18B20_DECIMAL_STEPS_11BIT;
-			break;
-			case 12:
-				decimal = temperature & 0x0F;
-				decimal *= (float)DS18B20_DECIMAL_STEPS_12BIT;
-			 break;
-			default:
-				decimal = 0xFF;
-				digit = 0;
-		}
-
-		/* Check for negative part */
-		decimal = digit + decimal;
-		if (minus)
-			decimal = 0 - decimal;
-
-
-		this->temperatureCelsius = static_cast<float> (temperature/16);
 
 	}
 
