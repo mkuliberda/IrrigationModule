@@ -1,5 +1,5 @@
 /*
- * PlantsObserver.h
+ * Plants.h
  *
  *  Created on: 28.11.2019
  *      Author: Mati
