@@ -41,8 +41,6 @@ enum class moisturesensortype_t{
 	capacitive_noshield
 };
 
-//using namespace std;
-
 
 class TemperatureSensor{
 
