@@ -22,8 +22,8 @@
 #include <irrigation.h>
 
 struct plant_s{
-	string name;
-	float soilmoisturePercent;
+	const string name;
+	const uint32_t id;
 };
 
 using namespace std;
@@ -34,19 +34,23 @@ private:
 
 	string name;
 	float soilMoisture;
+	const uint32_t id;
 
 public:
 
-	Plant(const string & _name):
+	Plant(const string & _name, const uint32_t & _id):
 	name(_name),
-	soilMoisture(0)
+	soilMoisture(-1000),
+	id(_id)
 	{};
 
 	~Plant(){};
 
-	void moisturePercentSet(const float & _soilmoisture);
-	float moisturePercentGet(void);
-	string& nameGet(void);
+	void 					moisturePercentSet(const float & _soilmoisture);
+	float& 					moisturePercentGet(void);
+	string& 				nameGet(void);
+	void					nameChange(const string & _new_name);
+	const uint32_t&			idGet(void);
 
 };
 
@@ -75,11 +79,12 @@ public:
 	}
 
 	const uint8_t& sectorGet(void);
-	bool plantCreate(const string & _name);
+	bool plantCreate(const string & _name, const uint32_t & _id);
 	uint8_t update(const double & _dt, const bool & _activate_watering);
 	uint8_t update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt);
 	uint8_t& plantscountGet(void);
-	struct plant_s planthealthGet(const string & _name);
+	float planthealthGet(const string & _name);
+	float planthealthGet(const uint32_t & _id);
 
 
 };

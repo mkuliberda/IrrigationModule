@@ -17,7 +17,7 @@
 #include "gpio.h"
 #include "usart.h"
 #include "tim.h"
-#include <cstring>
+#include <string>
 #include "main.h"
 #include "adc.h"
 
@@ -106,21 +106,21 @@ void vIrrigationControlTask( void *pvParameters )
 	const struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
 	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
-	struct plant_s Pelargonia = {"Pelargonia1",0};
-	struct plant_s Surfinia1 = {"Surfinia1",0};
-	struct plant_s Surfinia2 = {"Surfinia2",0};
-	struct plant_s Trawa = {"Trawa",0};
+	struct plant_s plant1 = {"Pelargonia1", 1};
+	struct plant_s plant2 = {"Surfinia1", 2};
+	struct plant_s plant3 = {"Surfinia2", 3};
+	struct plant_s plant4 = {"Trawa", 4};
 
 	double dt_seconds = xFrequencySeconds/1000.0f;
 
 	uint32_t tank1Status = 0;
 	uint32_t pumpsStatus = 0; //8 bits per pump
 	uint8_t sectorStatus[3]; //TODO: encode this like pumpStatus?
-	uint16_t sector1ADCValues[1] = {1};
-	uint16_t sector2ADCValues[2] = {2,3};
-	uint16_t sector3ADCValues[1] = {4};
-	uint16_t freeADCValues[4] = {5,6,7,8};
-	uint16_t batteryADCValues[1] = {9};
+	uint16_t sector1ADCValue[1] = {1};
+	uint16_t sector2ADCValue[2] = {2,3};
+	uint16_t sector3ADCValue[1] = {4};
+	uint16_t freeADCValue[4] = {5,6,7,8};
+	uint16_t batteryADCValue[1] = {9};
 
 
 	tank1StatusQueue = xQueueCreate(TANK1STATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
@@ -131,7 +131,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 
 	IrrigationSector *sector1 = new IrrigationSector(1);
-	sector1->plantCreate(Pelargonia.name);
+	sector1->plantCreate(plant1.name, plant1.id);
 	sector1->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector1->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	if (sector1->irrigationController->pumpCreate(pumptype_t::binary) == true){
@@ -140,8 +140,8 @@ void vIrrigationControlTask( void *pvParameters )
 
 
 	IrrigationSector *sector2 = new IrrigationSector(2);
-	sector2->plantCreate(Surfinia1.name);
-	sector2->plantCreate(Surfinia2.name);
+	sector2->plantCreate(plant2.name, plant2.id);
+	sector2->plantCreate(plant3.name, plant3.id);
 	sector2->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
@@ -151,7 +151,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 
 	IrrigationSector *sector3 = new IrrigationSector(3);
-	sector3->plantCreate(Trawa.name);
+	sector3->plantCreate(plant4.name, plant4.id);
 	sector3->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector3->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	if (sector3->irrigationController->pumpCreate(pumptype_t::binary) == true){
@@ -161,19 +161,25 @@ void vIrrigationControlTask( void *pvParameters )
 
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
 	if (tank1->waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
-		tank1->vOpticalWLSensors[0].init(WLSensorHighPositionMeters, opticalwaterlevelsensor1gpio);
+		tank1->vOpticalWLSensors.at(0).init(WLSensorHighPositionMeters, opticalwaterlevelsensor1gpio);
 	}
 	if (tank1->waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
-		tank1->vOpticalWLSensors[1].init(WLSensorLowPositionMeters, opticalwaterlevelsensor2gpio);
+		tank1->vOpticalWLSensors.at(1).init(WLSensorLowPositionMeters, opticalwaterlevelsensor2gpio);
 	}
 	if (tank1->temperatureSensorCreate(temperaturesensortype_t::ds18b20) == true){
-		tank1->vTemperatureSensors[0].init(ds18b20_1gpio, &htim7);
+		tank1->vTemperatureSensors.at(0).init(ds18b20_1gpio, &htim7);
 	}
 
 
 	bool test_cmd1 = true;
 	bool test_cmd2 = true;
 	bool test_cmd3 = true;
+	bool planthealth_req = true;
+	float health_tosend1 = 0;
+	float health_tosend2 = 0;
+	float health_tosend3 = 0;
+	float health_tosend4 = 0;
+	float health_tosend5 = 0;
 
     for( ;; )
     {
@@ -189,31 +195,31 @@ void vIrrigationControlTask( void *pvParameters )
 					switch (i)
 					{
 					case 0:
-						xQueueReceive(ADCValuesQueue, &sector1ADCValues[0], 0);
+						xQueueReceive(ADCValuesQueue, &sector1ADCValue[0], 0);
 						break;
 					case 1:
-						xQueueReceive(ADCValuesQueue, &sector2ADCValues[0], 0);
+						xQueueReceive(ADCValuesQueue, &sector2ADCValue[0], 0);
 						break;
 					case 2:
-						xQueueReceive(ADCValuesQueue, &sector2ADCValues[1], 0);
+						xQueueReceive(ADCValuesQueue, &sector2ADCValue[1], 0);
 						break;
 					case 3:
-						xQueueReceive(ADCValuesQueue, &sector3ADCValues[0], 0);
+						xQueueReceive(ADCValuesQueue, &sector3ADCValue[0], 0);
 						break;
 					case 4:
-						xQueueReceive(ADCValuesQueue, &freeADCValues[0], 0);
+						xQueueReceive(ADCValuesQueue, &freeADCValue[0], 0);
 						break;
 					case 5:
-						xQueueReceive(ADCValuesQueue, &freeADCValues[1], 0);
+						xQueueReceive(ADCValuesQueue, &freeADCValue[1], 0);
 						break;
 					case 6:
-						xQueueReceive(ADCValuesQueue, &freeADCValues[2], 0);
+						xQueueReceive(ADCValuesQueue, &freeADCValue[2], 0);
 						break;
 					case 7:
-						xQueueReceive(ADCValuesQueue, &freeADCValues[3], 0);
+						xQueueReceive(ADCValuesQueue, &freeADCValue[3], 0);
 						break;
 					case 8:
-						xQueueReceive(ADCValuesQueue, &batteryADCValues[0], 0);
+						xQueueReceive(ADCValuesQueue, &batteryADCValue[0], 0);
 						break;
 					default:
 						break;
@@ -222,47 +228,20 @@ void vIrrigationControlTask( void *pvParameters )
 		   }
     	}
 
-		sector1->update(dt_seconds, test_cmd1, sector1ADCValues, 1);
-		sector2->update(dt_seconds, test_cmd2, sector2ADCValues, 2);
-		sector3->update(dt_seconds, test_cmd3, sector3ADCValues, 1);
-//		sector1->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[0]);
-//		sector2->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[1]);
-//		sector2->irrigationController->vDMAMoistureSensor[1].rawUpdate(adcValues[2]);
-//		sector3->irrigationController->vDMAMoistureSensor[0].rawUpdate(adcValues[3]);
-		//sector1->irrigationController->update(dt_seconds, test_cmd1);
-		//sector2->irrigationController->update(dt_seconds, test_cmd2);
-		//sector3->irrigationController->update(dt_seconds, test_cmd3);
+		sector1->update(dt_seconds, test_cmd1, sector1ADCValue, 1);
+		sector2->update(dt_seconds, test_cmd2, sector2ADCValue, 2);
+		sector3->update(dt_seconds, test_cmd3, sector3ADCValue, 1);
 
+		if(planthealth_req) health_tosend1 = sector1->planthealthGet(plant1.id);
+		if(planthealth_req) health_tosend3 = sector2->planthealthGet(plant2.id);
+		if(planthealth_req) health_tosend4 = sector2->planthealthGet(plant3.id);
+		if(planthealth_req) health_tosend5 = sector3->planthealthGet(plant4.id);
 
-
-
-    	//-----------test/development part only, to be deleted in final version----------
 
 	   	pumpStateEncode(sector1->irrigationController->pBinPump->statusGet(), pumpsStatus);
 	    pumpStateEncode(sector2->irrigationController->pBinPump->statusGet(), pumpsStatus);
 	    pumpStateEncode(sector3->irrigationController->pBinPump->statusGet(), pumpsStatus);
 	    xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
-
-
-
-//    	if(test_cnt < 200)
-//    	{
-//    		test_cmd = true;
-//    		sector1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
-//    	}
-//    	else if(test_cnt >= 200 && test_cnt < 400)
-//    	{
-//    		if(test_cnt == 250) cmd_consumed = false;
-//    		test_cmd = false;
-//    		sector1->irrigationController->pBinPump->run(dt_seconds,test_cmd, cmd_consumed);
-//    	}
-//    	else if(test_cnt >= 400)
-//		{
-//    		cmd_consumed = false;
-//    		test_cnt = 0;
-//		}
-//    	test_cnt++;
-    	//------------------------------------------------------------------------------
 
 
     	LEDToggle(6);

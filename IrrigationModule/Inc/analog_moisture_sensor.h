@@ -15,7 +15,7 @@
 #include "main.h"
 
 
-class AnalogDMAMoistureSensor: MoistureSensor{
+class AnalogDMAMoistureSensor: public MoistureSensor{
 
 private:
 
