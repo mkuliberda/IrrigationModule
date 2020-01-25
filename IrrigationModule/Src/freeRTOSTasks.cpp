@@ -319,36 +319,36 @@ void vWirelessCommTask( void *pvParameters )
 	/* Initialize NRF24L01+ on channel 15 and 32bytes of payload */
 	/* By default 2Mbps data rate and 0dBm output power */
 	/* NRF24L01 goes to RX mode by default */
-	NRF24L01_Init(15, 32);
+	//NRF24L01_Init(15, 32);
 
 	/* Set RF settings, Data rate to 2Mbps, Output power to -18dBm */
-	NRF24L01_SetRF(NRF24L01_DataRate_2M, NRF24L01_OutputPower_M18dBm);
+	//NRF24L01_SetRF(NRF24L01_DataRate_2M, NRF24L01_OutputPower_M18dBm);
 
 	/* Set my address, 5 bytes */
-	NRF24L01_SetMyAddress(MyAddress);
+	//NRF24L01_SetMyAddress(MyAddress);
 
 	/* Set TX address, 5 bytes */
-	NRF24L01_SetTxAddress(TxAddress);
+	//NRF24L01_SetTxAddress(TxAddress);
 
     for( ;; )
     {
 		/* If data is ready on NRF24L01+ */
-		if (NRF24L01_DataReady()) {
+		//if (NRF24L01_DataReady()) {
 			/* Get data from NRF24L01+ */
-			NRF24L01_GetData(dataIn);
+			//NRF24L01_GetData(dataIn);
 
 			/* Send it back, automatically goes to TX mode */
-			NRF24L01_Transmit(dataIn);
+			//NRF24L01_Transmit(dataIn);
 
 			/* Wait for data to be sent */
-			do {
+			//do {
 				/* Wait till sending */
-				transmissionStatus = NRF24L01_GetTransmissionStatus();
-			} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
+				//transmissionStatus = NRF24L01_GetTransmissionStatus();
+			//} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
 
 			/* Go back to RX mode */
-			NRF24L01_PowerUpRx();
-		}
+			//NRF24L01_PowerUpRx();
+		//}
 
     	LEDToggle(7);
     	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);

@@ -1,7 +1,6 @@
 #ifndef SENSORS_BASE_H_
 #define SENSORS_BASE_H_
 
-//using namespace std;
 
 enum class temperaturesensortype_t{
 	generic,
@@ -42,7 +41,7 @@ enum class moisturesensortype_t{
 	capacitive_noshield
 };
 
-using namespace std;
+//using namespace std;
 
 
 class TemperatureSensor{

@@ -1,22 +1,11 @@
 #ifndef NRF24L01_H_
 #define NRF24L01_H_
 
-/* C++ detection */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @defgroup NRF24L01P
- * @brief    nRF24L01+ library for STM32xxx devices - http://stm32f4-discovery.net/2015/09/hal-library-25-nrf24l01-for-stm32fxxx/
- * @{
- *
- * This library allows you to work with nRF24L01+ modules.
- * 
- * You can send and receive data from nRF24L01+ modules.
- * 
- * \par Default pinout
- * 	
 \verbatim
 NRF24L01+	STM32Fxxx	DESCRIPTION
 
@@ -35,41 +24,9 @@ IRQ			Not used	Interrupt pin. Goes low when active. Pin functionality is active,
  * You can still set any pin on Fxxx to be an external interrupt and handle interrupts from nRF24L01+ module.
  *
  * The easiest way to that is to use @ref EXTI library and attach interrupt functionality to this pin
- * 
- * \par Custom pinout
  *
- * Add lines below in your defines.h file if you want to change default pinout:
- *
-\code
-//Change SPI used. Refer to TM SPI library to check which pins are for SPI
-#define NRF24L01_SPI				SPI3
-#define NRF24L01_SPI_PINS			SPI_PinsPack_2
+*/
 
-//Change CSN pin. This is for SPI communication
-#define NRF24L01_CSN_PORT			GPIOD
-#define NRF24L01_CSN_PIN			GPIO_Pin_7
-
-//Change CE pin. This pin is used to enable/disable transmitter/receiver functionality
-#define NRF24L01_CE_PORT			GPIOD
-#define NRF24L01_CE_PIN				GPIO_Pin_8
-\endcode
- *
- * \par Changelog
- *
-\verbatim
- Version 1.0
-  - First release
-\endverbatim
- *
- * \par Dependencies
- *
-\verbatim
- - STM32Fxxx HAL
- - defines.h
- - TM SPI
- - TM GPIO
-\endverbatim
- */
 #include "stm32f3xx_hal.h"
 #include "gpio.h"
 #include "spi.h"
