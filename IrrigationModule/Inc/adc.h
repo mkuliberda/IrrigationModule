@@ -55,17 +55,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f3xx_hal.h"
-#include "cmsis_os.h"
-#include "main.h"
-
-
-#define ADCVALUES_BUFFER_LENGTH 9
 
 extern ADC_HandleTypeDef hadc1;
 extern DMA_HandleTypeDef hdma_adc1;
 extern uint16_t ADC1ConvertedValues[9];
-extern xQueueHandle ADCValuesQueue;
-extern SemaphoreHandle_t xADCReadingsReadySemaphore;
 
 
 extern void _Error_Handler(char *, int);

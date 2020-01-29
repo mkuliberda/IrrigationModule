@@ -15,7 +15,7 @@ void NRF24L01_SoftwareReset(void);
 uint8_t NRF24L01_RxFifoEmpty(void);
 
 /* NRF structure */
-static NRF24L01_t NRF24L01_Struct;
+static NRF24L01_s NRF24L01_Struct;
 
 void NRF24L01_InitPins(void) {
 	/* Init pins */

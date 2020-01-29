@@ -268,16 +268,38 @@ typedef struct {
 	uint8_t Channel;					//Channel selected
 	NRF24L01_OutputPower_t OutPwr;	//Output power
 	NRF24L01_DataRate_t DataRate;	//Data rate
-} NRF24L01_t;
+} NRF24L01_s;
 
-/**
- * @defgroup NRF24L01P_Functions
- * @brief    Library Functions
- *
- * Here are listed very basic functions to work with NRF modules
- *
- * @{
- */
+/*
+class NRF24L01{
+
+private:
+	NRF24L01_s 						config_struct;
+	SPI_HandleTypeDef 				*pspi;
+
+	void 							NRF24L01_WriteBit(uint8_t reg, uint8_t bit, uint8_t value);
+	uint8_t 						NRF24L01_ReadBit(uint8_t reg, uint8_t bit);
+	uint8_t 						NRF24L01_ReadRegister(uint8_t reg);
+	void 							NRF24L01_ReadRegisterMulti(uint8_t reg, uint8_t* data, uint8_t count);
+	void 							NRF24L01_WriteRegisterMulti(uint8_t reg, uint8_t *data, uint8_t count);
+	void 							NRF24L01_SoftwareReset(void);
+	uint8_t 						NRF24L01_RxFifoEmpty(void);
+
+
+public:
+
+	void 							NRF24L01_Init(void);
+	void 							NRF24L01_SetRF(NRF24L01_DataRate_2M, NRF24L01_OutputPower_M18dBm);
+	void 							NRF24L01_SetMyAddress(MyAddress);
+	void							NRF24L01_SetTxAddress(TxAddress);
+	bool 							NRF24L01_DataIsReady(void);
+	void 							NRF24L01_GetData(dataIn);
+	void 							NRF24L01_Transmit(dataIn);
+	NRF24L01_Transmit_Status_t		NRF24L01_GetTransmissionStatus(void);
+
+
+};
+*/
 
 /**
  * @brief  Initializes NRF24L01+ module

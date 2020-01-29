@@ -59,6 +59,14 @@
 #include "freeRTOSTasks.h"
 
 /* USER CODE BEGIN Includes */
+SemaphoreHandle_t xUserButtonSemaphore = NULL;
+SemaphoreHandle_t xADCReadingsReadySemaphore = NULL;
+xQueueHandle ADCValuesQueue;
+xQueueHandle tank1StatusQueue;
+xQueueHandle pumpsStatusQueue;
+xQueueHandle soilMoistureQueue;
+xQueueHandle batteryQueue;
+
 
 /* USER CODE END Includes */
 
@@ -114,6 +122,11 @@ int main(void)
   MX_TIM7_Init();
 
   /* USER CODE BEGIN 2 */
+  vSemaphoreCreateBinary(xUserButtonSemaphore);
+  vSemaphoreCreateBinary(xADCReadingsReadySemaphore);
+  ADCValuesQueue = xQueueCreate(ADCVALUES_BUFFER_LENGTH, sizeof( uint16_t ) );
+  tank1StatusQueue = xQueueCreate(TANK1STATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
+  pumpsStatusQueue = xQueueCreate(PUMPSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
 
   /* USER CODE END 2 */
 

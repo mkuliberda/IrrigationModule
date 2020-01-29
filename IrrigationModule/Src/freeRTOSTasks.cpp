@@ -22,17 +22,14 @@
 #include "adc.h"
 #include "nrf24l01.h"
 
-#define TANK1STATUS_BUFFER_LENGTH 1
-#define PUMPSSTATUS_BUFFER_LENGTH 1
-#define SOILMOISTURE_BUFFER_LENGTH 8
-#define BATTERY_BUFFER_LENGTH 1
 
-
-SemaphoreHandle_t xUserButtonSemaphore = NULL;
-xQueueHandle tank1StatusQueue;
-xQueueHandle pumpsStatusQueue;
-xQueueHandle soilMoistureQueue;
-xQueueHandle batteryQueue;
+extern SemaphoreHandle_t xUserButtonSemaphore;
+extern SemaphoreHandle_t xADCReadingsReadySemaphore;
+extern xQueueHandle ADCValuesQueue;
+extern xQueueHandle tank1StatusQueue;
+extern xQueueHandle pumpsStatusQueue;
+extern xQueueHandle soilMoistureQueue;
+extern xQueueHandle batteryQueue;
 
 void vADCReadTask( void *pvParameters )
 {
@@ -66,8 +63,6 @@ void vLEDFlashTask( void *pvParameters )
 
 void vUserButtonCheckTask(void *pvParameters )
 {
-	vSemaphoreCreateBinary(xUserButtonSemaphore);
-
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
@@ -122,13 +117,6 @@ void vIrrigationControlTask( void *pvParameters )
 	uint16_t sector3ADCValue[1] = {4};
 	uint16_t freeADCValue[4] = {5,6,7,8};
 	uint16_t batteryADCValue[1] = {9};
-
-
-	tank1StatusQueue = xQueueCreate(TANK1STATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
-	pumpsStatusQueue = xQueueCreate(PUMPSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
-	ADCValuesQueue = xQueueCreate(ADCVALUES_BUFFER_LENGTH, sizeof( uint16_t ) );
-	vSemaphoreCreateBinary(xADCReadingsReadySemaphore);
-
 
 
 	IrrigationSector *sector1 = new IrrigationSector(1);
