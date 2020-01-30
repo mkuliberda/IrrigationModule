@@ -11,11 +11,11 @@ NRF24L01+	STM32Fxxx	DESCRIPTION
 
 GND			GND			Ground
 VCC			3.3V		3.3V
-CE			PD8			RF activated pin
-CSN			PD7			Chip select pin for SPI
-SCK			PC10		SCK pin for SPI
-MOSI		PC12		MOSI pin for SPI
-MISO		PC11		MISO pin for SPI
+CE						RF activated pin
+CSN						Chip select pin for SPI
+SCK						SCK pin for SPI
+MOSI					MOSI pin for SPI
+MISO					MISO pin for SPI
 IRQ			Not used	Interrupt pin. Goes low when active. Pin functionality is active, but not used in library
 \endverbatim 	
  *
@@ -27,11 +27,22 @@ IRQ			Not used	Interrupt pin. Goes low when active. Pin functionality is active,
  *
 */
 
+
+#include <wireless_base.h>
+
+#ifndef RPI
 #include "stm32f3xx_hal.h"
 #include "gpio.h"
 #include "spi.h"
 #include "main.h"
-#include <wireless_base.h>
+
+#else
+#include <iostream>
+#include <errno.h>
+#include <wiringPiSPI.h>
+#include <unistd.h>
+#endif
+
 
 
 /* NRF24L01+ registers*/
@@ -195,22 +206,10 @@ IRQ			Not used	Interrupt pin. Goes low when active. Pin functionality is active,
 #define NRF24L01_R_RX_PL_WID_MASK			0x60
 #define NRF24L01_NOP_MASK					0xFF
 
-/* TODO: Flush FIFOs */
-#define NRF24L01_FLUSH_TX					do { NRF24L01_CSN_LOW; /*SPI_Send(NRF24L01_SPI, NRF24L01_FLUSH_TX_MASK);*/ NRF24L01_CSN_HIGH; } while (0)
-#define NRF24L01_FLUSH_RX					do { NRF24L01_CSN_LOW; /*SPI_Send(NRF24L01_SPI, NRF24L01_FLUSH_RX_MASK);*/ NRF24L01_CSN_HIGH; } while (0)
-
 #define NRF24L01_TRANSMISSON_OK 			0
 #define NRF24L01_MESSAGE_LOST   			1
 
-#define NRF24L01_CHECK_BIT(reg, bit)       (reg & (1 << bit))
-
-/* Pins configuration */
-#define NRF24L01_CE_LOW				HAL_GPIO_WritePin(NRF24_CE_GPIO_Port, NRF24_CE_Pin, GPIO_PIN_RESET)
-#define NRF24L01_CE_HIGH			HAL_GPIO_WritePin(NRF24_CE_GPIO_Port, NRF24_CE_Pin, GPIO_PIN_SET)
-#define NRF24L01_CSN_LOW			HAL_GPIO_WritePin(NRF24_NSS_GPIO_Port, NRF24_NSS_Pin, GPIO_PIN_RESET)
-#define NRF24L01_CSN_HIGH			HAL_GPIO_WritePin(NRF24_NSS_GPIO_Port, NRF24_NSS_Pin, GPIO_PIN_SET)
-
-#define NRF24L01_SPI 				SPI2
+#define CHECK_BIT(reg, bit)       (reg & (1 << bit))
 
 /* Interrupt masks */
 #define NRF24L01_IRQ_DATA_READY     0x40 /*!< Data ready for receive */
@@ -264,42 +263,81 @@ typedef enum _NRF24L01_OutputPower_t {
  */
 
 typedef struct {
-	uint8_t PayloadSize;				//Payload size
-	uint8_t Channel;					//Channel selected
+	uint8_t PayloadSize;			//Payload size
+	uint8_t Channel;				//Channel selected
 	NRF24L01_OutputPower_t OutPwr;	//Output power
 	NRF24L01_DataRate_t DataRate;	//Data rate
 } NRF24L01_s;
 
-/*
-class NRF24L01{
+
+class NRF24L01: public Wireless{
 
 private:
+
+	bool							valid;
 	NRF24L01_s 						config_struct;
+#ifndef RPI
 	SPI_HandleTypeDef 				*pspi;
+	gpio_s							ce;
+	gpio_s							csn;
+	gpio_s							irq;
+#else
+	int								rpi_fd;
+	int								rpi_csn;
+	int								rpi_ce;
+	int								rpi_irq;
+#endif
 
-	void 							NRF24L01_WriteBit(uint8_t reg, uint8_t bit, uint8_t value);
-	uint8_t 						NRF24L01_ReadBit(uint8_t reg, uint8_t bit);
-	uint8_t 						NRF24L01_ReadRegister(uint8_t reg);
-	void 							NRF24L01_ReadRegisterMulti(uint8_t reg, uint8_t* data, uint8_t count);
-	void 							NRF24L01_WriteRegisterMulti(uint8_t reg, uint8_t *data, uint8_t count);
-	void 							NRF24L01_SoftwareReset(void);
-	uint8_t 						NRF24L01_RxFifoEmpty(void);
-
+	void 							WriteBit(const uint8_t & _reg, const uint8_t & _bit, const uint8_t & _value);
+	uint8_t 						ReadBit(const uint8_t & _reg, const uint8_t & _bit);
+	uint8_t 						ReadRegister(const uint8_t & _reg);
+	void 							WriteRegister(const uint8_t & _reg, const uint8_t & _value);
+	void 							ReadRegisterMulti(const uint8_t & _reg, uint8_t* data, const uint8_t & _count);
+	void 							WriteRegisterMulti(const uint8_t & _reg, uint8_t *data, const uint8_t & _count);
+	void 							SoftwareReset(void);
+	uint8_t 						RxFifoEmpty(void);
+	void							FlushTX(void);
+	void							FlushRX(void);
+	void							CSN_HIGH(void);
+	void							CSN_LOW(void);
+	void							CE_HIGH(void);
+	void							CE_LOW(void);
 
 public:
 
-	void 							NRF24L01_Init(void);
-	void 							NRF24L01_SetRF(NRF24L01_DataRate_2M, NRF24L01_OutputPower_M18dBm);
-	void 							NRF24L01_SetMyAddress(MyAddress);
-	void							NRF24L01_SetTxAddress(TxAddress);
-	bool 							NRF24L01_DataIsReady(void);
-	void 							NRF24L01_GetData(dataIn);
-	void 							NRF24L01_Transmit(dataIn);
-	NRF24L01_Transmit_Status_t		NRF24L01_GetTransmissionStatus(void);
+	NRF24L01():
+		valid(false)
+	{
+		this->commType = communicationtype_t::point_to_point;
+	}
+
+#ifndef RPI
+	void 							Init(SPI_HandleTypeDef *_spi, const struct gpio_s & _ce, const struct gpio_s & _csn);
+	void 							Init(SPI_HandleTypeDef *_spi, const struct gpio_s & _ce, const struct gpio_s & _csn, const struct gpio_s & _irq);
+#else
+	void 							Init(const int & _spifd, const int & _csn, const int & _ce);
+#endif
+	uint8_t 						Config(const uint8_t & _payloadsize, const uint8_t & _channel, const NRF24L01_OutputPower_t & _outpwr, const NRF24L01_DataRate_t & _datarate);
+	void 							SetRF(const NRF24L01_DataRate_t & _datarate, const NRF24L01_OutputPower_t & _outpwr);
+	uint8_t 						SetPayloadSize(const uint8_t & _payloadsize);
+	void 							SetChannel(const uint8_t & _channel);
+	void 							SetMyAddress(uint8_t *adr);
+	void							SetTxAddress(uint8_t *adr);
+	uint8_t 						DataReady(void);
+	void 							GetPayload(uint8_t* data);
+	void 							TransmitPayload(uint8_t *data);
+	uint8_t 						GetRetransmissionsCount(void);
+	NRF24L01_Transmit_Status_t		GetTransmissionStatus(void);
+	uint8_t 						GetStatus(void);
+	void 							PowerUpTx(void);
+	void 							PowerUpRx(void);
+	void 							PowerDown(void);
+	uint8_t 						ReadInterrupts(NRF24L01_IRQ_t* _irq);
+	void 							ClearInterrupts(void);
 
 
 };
-*/
+
 
 /**
  * @brief  Initializes NRF24L01+ module
@@ -308,144 +346,8 @@ public:
  * @note   Maximal payload size is 32bytes
  * @retval 1
  */
-uint8_t NRF24L01_Init(uint8_t channel, uint8_t payload_size);
+//uint8_t NRF24L01_Init(uint8_t channel, uint8_t payload_size);
 
-/**
- * @brief  Sets own address. This is used for settings own id when communication with other modules
- * @note   "Own" address of one device must be the same as "TX" address of other device (and vice versa),
- *         if you want to get successful communication
- * @param  *adr: Pointer to 5-bytes length array with address
- * @retval None
- */
-void NRF24L01_SetMyAddress(uint8_t* adr);
-
-/**
- * @brief  Sets address you will communicate with
- * @note   "Own" address of one device must be the same as "TX" address of other device (and vice versa),
- *         if you want to get successful communication
- * @param  *adr: Pointer to 5-bytes length array with address
- * @retval None
- */
-void NRF24L01_SetTxAddress(uint8_t* adr);
-
-/**
- * @brief  Gets number of retransmissions needed in last transmission
- * @param  None
- * @retval Number of retransmissions, between 0 and 15.
- */
-uint8_t NRF24L01_GetRetransmissionsCount(void);
-
-/**
- * @brief  Sets NRF24L01+ to TX mode
- * @note   In this mode is NRF able to send data to another NRF module
- * @param  None
- * @retval None
- */
-void NRF24L01_PowerUpTx(void);
-
-/**
- * @brief  Sets NRF24L01+ to RX mode
- * @note   In this mode is NRF able to receive data from another NRF module.
- *         This is default mode and should be used all the time, except when sending data
- * @param  None
- * @retval None
- */
-void NRF24L01_PowerUpRx(void);
-
-/**
- * @brief  Sets NRF24L01+ to power down mode
- * @note   In power down mode, you are not able to transmit/receive data.
- *         You can wake up device using @ref NRF24L01_PowerUpTx() or @ref NRF24L01_PowerUpRx() functions
- * @param  None
- * @retval None
- */
-void NRF24L01_PowerDown(void);
-
-/**
- * @brief  Gets transmissions status
- * @param  None
- * @retval Transmission status. Return is based on @ref NRF24L01_Transmit_Status_t enumeration
- */
-NRF24L01_Transmit_Status_t NRF24L01_GetTransmissionStatus(void);
-
-/**
- * @brief  Transmits data with NRF24L01+ to another NRF module
- * @param  *data: Pointer to 8-bit array with data.
- *         Maximum length of array can be the same as "payload_size" parameter on initialization
- * @retval None
- */
-void NRF24L01_Transmit(uint8_t *data);
-
-/**
- * @brief  Checks if data is ready to be read from NRF24L01+
- * @param  None
- * @retval Data ready status:
- *            - 0: No data available for receive in bufferReturns
- *            - > 0: Data is ready to be collected
- */
-uint8_t NRF24L01_DataReady(void);
-
-/**
- * @brief  Gets data from NRF24L01+
- * @param  *data: Pointer to 8-bits array where data from NRF will be saved
- * @retval None
- */
-void NRF24L01_GetData(uint8_t *data);
-
-/**
- * @brief  Sets working channel
- * @note   Channel value is just an offset in units MHz from 2.4GHz
- *         For example, if you select channel 65, then operation frequency will be set to 2.465GHz.
- * @param  channel: RF channel where device will operate
- * @retval None 
- */
-void NRF24L01_SetChannel(uint8_t channel);
-
-/**
- * @brief  Sets RF parameters for NRF24L01+
- * @param  DataRate: Data rate selection for NRF module. This parameter can be a value of @ref NRF24L01_DataRate_t enumeration
- * @param  OutPwr: Output power selection for NRF module. This parameter can be a value of @ref NRF24L01_OutputPower_t enumeration
- * @retval None
- */
-void NRF24L01_SetRF(NRF24L01_DataRate_t DataRate, NRF24L01_OutputPower_t OutPwr);
-
-/**
- * @brief  Gets NRLF+ status register value
- * @param  None
- * @retval Status register from NRF
- */
-uint8_t NRF24L01_GetStatus(void);
-
-/**
- * @brief  Reads interrupts from NRF 
- * @param  *IRQ: Pointer to @ref NRF24L01_IRQ_t where IRQ status will be saved
- * @retval IRQ status
- *            - 0: No interrupts are active
- *            - > 0: At least one interrupt is active
- */
-uint8_t NRF24L01_Read_Interrupts(NRF24L01_IRQ_t* IRQ);
-
-/**
- * @brief  Clears interrupt status
- * @param  None
- * @retval None
- */
-void NRF24L01_Clear_Interrupts(void);
-
-/* Private */
-void NRF24L01_WriteRegister(uint8_t reg, uint8_t value);
-
-/**
- * @}
- */
- 
-/**
- * @}
- */
- 
-/**
- * @}
- */
 
 /* C++ detection */
 #ifdef __cplusplus

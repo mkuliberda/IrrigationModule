@@ -65,10 +65,10 @@
 /* USER CODE BEGIN Private defines */
 #define DEBOUNCECOUNTS 1000
 
- struct gpio_s{
- 	GPIO_TypeDef* port;
- 	uint16_t pin;
- };
+struct gpio_s{
+	GPIO_TypeDef* port;
+	uint16_t pin;
+};
 /* USER CODE END Private defines */
 
 void MX_GPIO_Init(void);

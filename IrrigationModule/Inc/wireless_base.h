@@ -51,7 +51,7 @@ class Wireless{
 
 protected:
 
-	communicationtype_t 			type;
+	communicationtype_t 			commType;
 
 	communicationtype_t& 			typeGet(void);
 

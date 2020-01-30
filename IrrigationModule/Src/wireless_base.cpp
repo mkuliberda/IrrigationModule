@@ -8,7 +8,7 @@
 #include <wireless_base.h>
 
 communicationtype_t& Wireless::typeGet(void){
-	return this->type;
+	return this->commType;
 }
 
 

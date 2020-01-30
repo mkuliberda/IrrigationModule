@@ -281,6 +281,9 @@ void vWirelessCommTask( void *pvParameters )
 	const portTickType xFrequencySeconds = 0.05 * TASK_FREQ_MULTIPLIER; //<10Hz
 	xLastWakeTime=xTaskGetTickCount();
 
+	const struct gpio_s radio1ce = {NRF24_CE_GPIO_Port, NRF24_CE_Pin};
+	const struct gpio_s radio1csn = {NRF24_NSS_GPIO_Port, NRF24_NSS_Pin};
+
 	/* Receiver address */
 	uint8_t TxAddress[] = {
 		0xE7,
@@ -304,9 +307,12 @@ void vWirelessCommTask( void *pvParameters )
 	/* NRF transmission status */
 	NRF24L01_Transmit_Status_t transmissionStatus;
 
+	NRF24L01 *radio1 = new NRF24L01();
+
 	/* Initialize NRF24L01+ on channel 15 and 32bytes of payload */
 	/* By default 2Mbps data rate and 0dBm output power */
 	/* NRF24L01 goes to RX mode by default */
+	radio1->Init(&hspi2,radio1ce, radio1csn);
 	//NRF24L01_Init(15, 32);
 
 	/* Set RF settings, Data rate to 2Mbps, Output power to -18dBm */
@@ -341,6 +347,8 @@ void vWirelessCommTask( void *pvParameters )
     	LEDToggle(7);
     	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
+
+    delete radio1;
 
 }
 
