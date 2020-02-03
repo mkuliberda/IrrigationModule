@@ -317,12 +317,12 @@ public:
 #else
 	void 							Init(const int & _spifd, const int & _csn, const int & _ce);
 #endif
-	uint8_t 						Config(const uint8_t & _payloadsize, const uint8_t & _channel, const NRF24L01_OutputPower_t & _outpwr, const NRF24L01_DataRate_t & _datarate);
-	void 							SetRF(const NRF24L01_DataRate_t & _datarate, const NRF24L01_OutputPower_t & _outpwr);
+	bool&	 						Config(const uint8_t & _payloadsize, const uint8_t & _channel, const NRF24L01_OutputPower_t & _outpwr, const NRF24L01_DataRate_t & _datarate);
+	bool 							SetRF(const NRF24L01_DataRate_t & _datarate, const NRF24L01_OutputPower_t & _outpwr);
 	uint8_t 						SetPayloadSize(const uint8_t & _payloadsize);
-	void 							SetChannel(const uint8_t & _channel);
-	void 							SetMyAddress(uint8_t *adr);
-	void							SetTxAddress(uint8_t *adr);
+	bool 							SetChannel(const uint8_t & _channel);
+	bool 							SetMyAddress(uint8_t *adr);
+	bool							SetTxAddress(uint8_t *adr);
 	uint8_t 						DataReady(void);
 	void 							GetPayload(uint8_t* data);
 	void 							TransmitPayload(uint8_t *data);

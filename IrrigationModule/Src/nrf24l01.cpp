@@ -30,25 +30,21 @@ void NRF24L01::Init(const int & _spifd, const int & _csn, const int & _ce){
 #endif
 
 
-uint8_t NRF24L01::Config(const uint8_t & _payloadsize, const uint8_t & _channel, const NRF24L01_OutputPower_t & _outpwr, const NRF24L01_DataRate_t & _datarate) {
+bool& NRF24L01::Config(const uint8_t & _payloadsize, const uint8_t & _channel, const NRF24L01_OutputPower_t & _outpwr, const NRF24L01_DataRate_t & _datarate) {
 	
-	//TODO: set this->valid after checking success on every action here
+	this->valid = true;
+
 	/* Max payload is 32bytes */
 	if (_payloadsize <= 32) {
 		this->config_struct.PayloadSize = _payloadsize;
 	}
 	else this->config_struct.PayloadSize = 32;
 
-	/* Fill structure */
-	this->config_struct.Channel = _channel;
-	this->config_struct.OutPwr = _outpwr;
-	this->config_struct.DataRate = _datarate;
-	
 	/* Reset nRF24L01+ to power on registers values */
 	this->SoftwareReset();
 	
 	/* Channel select */
-	this->SetChannel(_channel);
+	if (this->SetChannel(_channel) != true){ return this->valid = false;}
 	
 	/* Set pipeline to max possible 32 bytes */
 	this->WriteRegister(NRF24L01_REG_RX_PW_P0, this->config_struct.PayloadSize); // Auto-ACK pipe
@@ -58,20 +54,25 @@ uint8_t NRF24L01::Config(const uint8_t & _payloadsize, const uint8_t & _channel,
 	this->WriteRegister(NRF24L01_REG_RX_PW_P4, this->config_struct.PayloadSize);
 	this->WriteRegister(NRF24L01_REG_RX_PW_P5, this->config_struct.PayloadSize);
 	
-	/* Set RF settings (2mbps, output power) */
-	this->SetRF(config_struct.DataRate, config_struct.OutPwr);
+	/* Set RF settings (datarate, output power) */
+	if (this->SetRF(_datarate, _outpwr) != true) {return this->valid = false;}
 	
 	/* Config register */
 	this->WriteRegister(NRF24L01_REG_CONFIG, NRF24L01_CONFIG);
 	
 	/* Enable auto-acknowledgment for all pipes */
 	this->WriteRegister(NRF24L01_REG_EN_AA, 0x3F);
+	if (this->ReadRegister(NRF24L01_REG_EN_AA) != 0x3F) {return this->valid = false;}
 	
 	/* Enable RX addresses */
 	this->WriteRegister(NRF24L01_REG_EN_RXADDR, 0x3F);
+	if (this->ReadRegister(NRF24L01_REG_EN_RXADDR) != 0x3F) {return this->valid = false;}
+
 
 	/* Auto retransmit delay: 1000 (4x250) us and Up to 15 retransmit trials */
 	this->WriteRegister(NRF24L01_REG_SETUP_RETR, 0x4F);
+	if (this->ReadRegister(NRF24L01_REG_SETUP_RETR) != 0x4F) {return this->valid = false;}
+
 	
 	/* Dynamic length configurations: No dynamic length */
 	this->WriteRegister(NRF24L01_REG_DYNPD, (0 << NRF24L01_DPL_P0) | (0 << NRF24L01_DPL_P1) | (0 << NRF24L01_DPL_P2) | (0 << NRF24L01_DPL_P3) | (0 << NRF24L01_DPL_P4) | (0 << NRF24L01_DPL_P5));
@@ -87,19 +88,24 @@ uint8_t NRF24L01::Config(const uint8_t & _payloadsize, const uint8_t & _channel,
 	this->PowerUpRx();
 	
 	/* Return OK */
-	this->valid = true;
-	return 1;
+	return this->valid;
 }
 
-void NRF24L01::SetMyAddress(uint8_t *adr) {
+bool NRF24L01::SetMyAddress(uint8_t *adr) {
 	this->CE_LOW();
 	this->WriteRegisterMulti(NRF24L01_REG_RX_ADDR_P1, adr, 5);
 	this->CE_HIGH();
+	//TODO: read register and check if values has been written, return true or false
+
+	return true;
 }
 
-void NRF24L01::SetTxAddress(uint8_t *adr) {
+bool NRF24L01::SetTxAddress(uint8_t *adr) {
 	this->WriteRegisterMulti(NRF24L01_REG_RX_ADDR_P0, adr, 5);
 	this->WriteRegisterMulti(NRF24L01_REG_TX_ADDR, adr, 5);
+	//TODO: read register and check if valus has been written, return true or false
+
+	return true;
 }
 
 /* TODO: Flush FIFOs */
@@ -108,7 +114,6 @@ void NRF24L01::FlushTX(void){
 #ifndef RPI
 	uint8_t tx = NRF24L01_FLUSH_TX_MASK;
 	HAL_SPI_Transmit(this->pspi, &tx, 1, HAL_MAX_DELAY);
-	/*SPI_Send(NRF24L01_SPI, NRF24L01_FLUSH_TX_MASK);*/
 #else
 	//TODO:
 #endif
@@ -119,7 +124,6 @@ void NRF24L01::FlushRX(void){
 #ifndef RPI
 	uint8_t tx = NRF24L01_FLUSH_RX_MASK;
 	HAL_SPI_Transmit(this->pspi, &tx, 1, HAL_MAX_DELAY);
-	/*SPI_Send(NRF24L01_SPI, NRF24L01_FLUSH_RX_MASK);*/
 #else
 	//TODO:
 #endif
@@ -184,15 +188,13 @@ uint8_t NRF24L01::ReadBit(const uint8_t & _reg, const uint8_t & _bit) {
 uint8_t NRF24L01::ReadRegister(const uint8_t & _reg) {
 
 	uint8_t value = 0;
+	uint8_t tx = NRF24L01_NOP_MASK;
+	uint8_t mask = NRF24L01_READ_REGISTER_MASK(_reg);
 
 	this->CSN_LOW();
 #ifndef RPI
-	uint8_t tx = NRF24L01_NOP_MASK;
-	uint8_t mask = NRF24L01_READ_REGISTER_MASK(_reg);
 	HAL_SPI_Transmit(this->pspi, &mask, 1, HAL_MAX_DELAY);
 	HAL_SPI_TransmitReceive(this->pspi, &tx, &value, 1, HAL_MAX_DELAY);
-	//SPI_Send(NRF24L01_SPI, NRF24L01_READ_REGISTER_MASK(reg));
-	//value = SPI_Send(NRF24L01_SPI, NRF24L01_NOP_MASK);
 #else
 	//TODO:
 #endif
@@ -202,13 +204,13 @@ uint8_t NRF24L01::ReadRegister(const uint8_t & _reg) {
 }
 
 void NRF24L01::ReadRegisterMulti(const uint8_t & _reg, uint8_t* data, const uint8_t & _count) {
+
+	uint8_t mask = NRF24L01_READ_REGISTER_MASK(_reg);
+
 	this->CSN_LOW();
 #ifndef RPI
-	uint8_t mask = NRF24L01_READ_REGISTER_MASK(_reg);
 	HAL_SPI_Transmit(this->pspi, &mask, 1, HAL_MAX_DELAY);
 	HAL_SPI_Receive(this->pspi, data, _count, HAL_MAX_DELAY);
-	//SPI_Send(NRF24L01_SPI, NRF24L01_READ_REGISTER_MASK(reg));
-	//SPI_ReadMulti(NRF24L01_SPI, data, NRF24L01_NOP_MASK, count);
 #else
 	//TODO:
 #endif
@@ -216,14 +218,14 @@ void NRF24L01::ReadRegisterMulti(const uint8_t & _reg, uint8_t* data, const uint
 }
 
 void NRF24L01::WriteRegister(const uint8_t & _reg, const uint8_t & _value) {
-	this->CSN_LOW();
-#ifndef RPI
+
 	uint8_t tx = NRF24L01_WRITE_REGISTER_MASK(_reg);
 	uint8_t val = _value;
+
+	this->CSN_LOW();
+#ifndef RPI
 	HAL_SPI_Transmit(this->pspi, &tx, 1, HAL_MAX_DELAY);
 	HAL_SPI_Transmit(this->pspi, &val, 1, HAL_MAX_DELAY);
-	//SPI_Send(NRF24L01_SPI, NRF24L01_WRITE_REGISTER_MASK(reg));
-	//SPI_Send(NRF24L01_SPI, value);
 #else
 	//TODO:
 #endif
@@ -231,13 +233,13 @@ void NRF24L01::WriteRegister(const uint8_t & _reg, const uint8_t & _value) {
 }
 
 void NRF24L01::WriteRegisterMulti(const uint8_t & _reg, uint8_t *data, const uint8_t & _count) {
+
+	uint8_t mask = NRF24L01_WRITE_REGISTER_MASK(_reg);
+
 	this->CSN_LOW();
 #ifndef RPI
-	uint8_t mask = NRF24L01_WRITE_REGISTER_MASK(_reg);
 	HAL_SPI_Transmit(this->pspi, &mask, 1, HAL_MAX_DELAY);
 	HAL_SPI_Transmit(this->pspi, data, _count, HAL_MAX_DELAY);
-	//SPI_Send(NRF24L01_SPI, NRF24L01_WRITE_REGISTER_MASK(reg));
-	//SPI_WriteMulti(NRF24L01_SPI, data, count);
 #else
 	//TODO:
 #endif
@@ -268,7 +270,8 @@ void NRF24L01::PowerDown(void) {
 }
 
 void NRF24L01::TransmitPayload(uint8_t *data) {
-	uint8_t count = this->config_struct.PayloadSize;
+
+	uint8_t tx = NRF24L01_W_TX_PAYLOAD_MASK;
 
 	/* Chip enable put to low, disable it */
 	this->CE_LOW();
@@ -279,15 +282,10 @@ void NRF24L01::TransmitPayload(uint8_t *data) {
 	/* Send payload to nRF24L01+ */
 	this->CSN_LOW();
 #ifndef RPI
-	uint8_t tx = NRF24L01_W_TX_PAYLOAD_MASK;
 	/* Send write payload command */
 	HAL_SPI_Transmit(this->pspi, &tx, 1, HAL_MAX_DELAY);
 	/* Fill payload with data*/
-	HAL_SPI_Transmit(this->pspi, data, count, HAL_MAX_DELAY);
-	//SPI_Send(NRF24L01_SPI, NRF24L01_W_TX_PAYLOAD_MASK);
-	/* Fill payload with data*/
-	//SPI_WriteMulti(NRF24L01_SPI, data, count);
-	/* Disable SPI */
+	HAL_SPI_Transmit(this->pspi, data, this->config_struct.PayloadSize, HAL_MAX_DELAY);
 #else
 	//TODO:
 #endif
@@ -299,16 +297,15 @@ void NRF24L01::TransmitPayload(uint8_t *data) {
 
 void NRF24L01::GetPayload(uint8_t* data) {
 
+	uint8_t tx = NRF24L01_R_RX_PAYLOAD_MASK;
+
 	/* Pull down chip select */
 	this->CSN_LOW();
 #ifndef RPI
-	uint8_t tx = NRF24L01_R_RX_PAYLOAD_MASK;
 	/* Send read payload command*/
 	HAL_SPI_Transmit(this->pspi, &tx, 1, HAL_MAX_DELAY);
-	//SPI_Send(NRF24L01_SPI, NRF24L01_R_RX_PAYLOAD_MASK);
 	/* Read payload */
 	HAL_SPI_Receive(this->pspi, data, this->config_struct.PayloadSize, HAL_MAX_DELAY);
-	//SPI_SendMulti(NRF24L01_SPI, data, data, NRF24L01_Struct.PayloadSize);
 #else
 	//TODO:
 #endif
@@ -316,9 +313,11 @@ void NRF24L01::GetPayload(uint8_t* data) {
 	this->CSN_HIGH();
 	/* Reset status register, clear RX_DR interrupt flag */
 	this->WriteRegister(NRF24L01_REG_STATUS, (1 << NRF24L01_RX_DR));
+
 }
 
 uint8_t NRF24L01::DataReady(void) {
+
 	uint8_t status = this->GetStatus();
 	
 	if (CHECK_BIT(status, NRF24L01_RX_DR)) {
@@ -333,14 +332,14 @@ uint8_t NRF24L01::RxFifoEmpty(void) {
 }
 
 uint8_t NRF24L01::GetStatus(void) {
+
 	uint8_t status;
+	uint8_t tx = NRF24L01_NOP_MASK;
 	
 	this->CSN_LOW();
 #ifndef RPI
 	/* First received byte is always status register */
-	uint8_t tx = NRF24L01_NOP_MASK;
 	HAL_SPI_TransmitReceive(this->pspi, &tx, &status, 1, HAL_MAX_DELAY);
-	//status = SPI_Send(NRF24L01_SPI, NRF24L01_NOP_MASK);
 #else
 	//TODO:
 #endif
@@ -351,7 +350,9 @@ uint8_t NRF24L01::GetStatus(void) {
 }
 
 NRF24L01_Transmit_Status_t NRF24L01::GetTransmissionStatus(void) {
+
 	uint8_t status = this->GetStatus();
+
 	if (CHECK_BIT(status, NRF24L01_TX_DS)) {
 		/* Successfully sent */
 		return NRF24L01_Transmit_Status_Ok;
@@ -365,6 +366,7 @@ NRF24L01_Transmit_Status_t NRF24L01::GetTransmissionStatus(void) {
 }
 
 void NRF24L01::SoftwareReset(void) {
+
 	uint8_t data[5];
 	
 	this->WriteRegister(NRF24L01_REG_CONFIG, 	NRF24L01_REG_DEFAULT_VAL_CONFIG);
@@ -423,16 +425,26 @@ uint8_t NRF24L01::GetRetransmissionsCount(void) {
 	return this->ReadRegister(NRF24L01_REG_OBSERVE_TX) & 0x0F;
 }
 
-void NRF24L01::SetChannel(const uint8_t & _channel) {
-	if (_channel <= 125 && _channel != this->config_struct.Channel) {
+bool NRF24L01::SetChannel(const uint8_t & _channel) {
+
+	uint8_t chan = 0;
+
+	if (_channel <= 125 && _channel >= 0) {
 		/* Store new channel setting */
 		this->config_struct.Channel = _channel;
 		/* Write channel */
 		this->WriteRegister(NRF24L01_REG_RF_CH, _channel);
+		chan = this->ReadRegister(NRF24L01_REG_RF_CH);
+
+		return chan == _channel ? true : false;
+
+	}else{
+		return false;
 	}
 }
 
-void NRF24L01::SetRF(const NRF24L01_DataRate_t & _datarate, const NRF24L01_OutputPower_t & _outpwr) {
+bool NRF24L01::SetRF(const NRF24L01_DataRate_t & _datarate, const NRF24L01_OutputPower_t & _outpwr) {
+
 	uint8_t tmp = 0;
 	config_struct.DataRate = _datarate;
 	config_struct.OutPwr = _outpwr;
@@ -453,6 +465,9 @@ void NRF24L01::SetRF(const NRF24L01_DataRate_t & _datarate, const NRF24L01_Outpu
 	}
 	
 	this->WriteRegister(NRF24L01_REG_RF_SETUP, tmp);
+	//TODO: read register and check if values are correct, return true or false
+
+	return true;
 }
 
 uint8_t NRF24L01::ReadInterrupts(NRF24L01_IRQ_t* irq) {

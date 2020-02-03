@@ -19,32 +19,35 @@ enum class communicationtype_t{
 };
 
 struct wframeRx_s {
-	uint8_t start 	= RPI_IRM;
-	uint8_t target 	= 0;
-	uint8_t id 		= 0;
-	uint8_t cmd  	= 0;
-	uint8_t subcmd1 = 0;
-	uint8_t subcmd2 = 0;
-	uint8_t subcmd3 = 0;
-	uint8_t subcmd4 = 0;
+	uint8_t start;
+	uint8_t target;
+	uint8_t id;
+	uint8_t cmd;
+	uint8_t subcmd1;
+	uint8_t subcmd2;
+	uint8_t subcmd3;
+	uint8_t subcmd4;
 	uint8_t free[23];
 	uint8_t crc8;
 };
 
 struct wframeTx_s {
-	uint8_t start 	= IRM_RPI;
-	uint8_t target 	= 0;
-	uint8_t id 		= 0;
-	float val 		= 0;
+	uint8_t start;
+	uint8_t target;
+	uint8_t id;
+	float val; //<<Make sure this is 32bit
 	char  desc[24];
-	uint8_t crc8	= 0;
+	uint8_t crc8;
 };
 
-union wprotocol_u{
+union txframe_u{
 	uint8_t 	buffer[32];
-	wframeRx_s 	rx;
-	wframeTx_s	tx;
+	wframeTx_s	values;
+};
 
+union rxframe_u{
+	uint8_t 	buffer[32];
+	wframeRx_s 	values;
 };
 
 class Wireless{
