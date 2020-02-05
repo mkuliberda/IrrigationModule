@@ -28,8 +28,11 @@ extern SemaphoreHandle_t xADCReadingsReadySemaphore;
 extern xQueueHandle ADCValuesQueue;
 extern xQueueHandle tank1StatusQueue;
 extern xQueueHandle pumpsStatusQueue;
-extern xQueueHandle soilMoistureQueue;
-extern xQueueHandle batteryQueue;
+extern xQueueHandle plantsHealthQueue;
+extern xQueueHandle batteryStatusQueue;
+extern xQueueHandle externalCommandsQueue;
+extern xQueueHandle sysStatusQueue;
+
 
 void vADCReadTask( void *pvParameters )
 {
@@ -102,10 +105,10 @@ void vIrrigationControlTask( void *pvParameters )
 	const struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
 	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
-	struct plant_s plant1 = {"Pelargonia1", 1};
-	struct plant_s plant2 = {"Surfinia1", 2};
-	struct plant_s plant3 = {"Surfinia2", 3};
-	struct plant_s plant4 = {"Trawa", 4};
+	struct plant_s plant1 = {"Pelargonia1", 1, 0.0};
+	struct plant_s plant2 = {"Surfinia1", 2, 0.0};
+	struct plant_s plant3 = {"Surfinia2", 3, 0.0};
+	struct plant_s plant4 = {"Trawa", 4, 0.0};
 
 	double dt_seconds = xFrequencySeconds/1000.0f;
 
@@ -164,11 +167,6 @@ void vIrrigationControlTask( void *pvParameters )
 	bool test_cmd2 = true;
 	bool test_cmd3 = true;
 	bool planthealth_req = true;
-	float health_tosend1 = 0;
-	float health_tosend2 = 0;
-	float health_tosend3 = 0;
-	float health_tosend4 = 0;
-	float health_tosend5 = 0;
 
     for( ;; )
     {
@@ -221,10 +219,10 @@ void vIrrigationControlTask( void *pvParameters )
 		sector2->update(dt_seconds, test_cmd2, sector2ADCValue, 2);
 		sector3->update(dt_seconds, test_cmd3, sector3ADCValue, 1);
 
-		if(planthealth_req) health_tosend1 = sector1->planthealthGet(plant1.id);
-		if(planthealth_req) health_tosend3 = sector2->planthealthGet(plant2.id);
-		if(planthealth_req) health_tosend4 = sector2->planthealthGet(plant3.id);
-		if(planthealth_req) health_tosend5 = sector3->planthealthGet(plant4.id);
+		if(planthealth_req) plant1.health = sector1->planthealthGet(plant1.id);
+		if(planthealth_req) plant2.health = sector2->planthealthGet(plant2.id);
+		if(planthealth_req) plant3.health = sector2->planthealthGet(plant3.id);
+		if(planthealth_req) plant4.health = sector3->planthealthGet(plant4.id);
 
 
 	   	pumpStateEncode(sector1->irrigationController->pBinPump->statusGet(), pumpsStatus);
@@ -278,20 +276,34 @@ void vStatusNotifyTask( void *pvParameters )
 void vWirelessCommTask( void *pvParameters )
 {
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
+	const portTickType xFrequencySeconds = 0.05 * TASK_FREQ_MULTIPLIER; //<20Hz
 	xLastWakeTime=xTaskGetTickCount();
 
 	const struct gpio_s radio1ce = {NRF24_CE_GPIO_Port, NRF24_CE_Pin};
 	const struct gpio_s radio1csn = {NRF24_NSS_GPIO_Port, NRF24_NSS_Pin};
 	txframe_u radio1FrameTx;
 	rxframe_u radio1FrameRx;
-	uint8_t radio1Status = 0;
+	struct extcmd_s cmd;
 	bool radio1Configured = false;
 
-	radio1FrameTx.values.start = IRM_RPI;
-	radio1FrameTx.values.target = 2;
-	radio1FrameTx.values.id = 1;
-	radio1FrameTx.values.val = 0.6;
+	radio1FrameTx.values.start = commdirection_t::irm_to_rpi;
+	radio1FrameTx.values.target = 0;
+	radio1FrameTx.values.id = 0;
+	radio1FrameTx.values.val = 0.0;
+	//radio1FrameTx.values.desc = "empty description"; TODO
+	radio1FrameTx.values.crc8 = 0;
+
+	//radio1FrameRx.values.start = 0;
+	//radio1FrameRx.values.target = 0;
+	radio1FrameRx.values.id = 0;
+	//radio1FrameRx.values.cmd = 0;
+	radio1FrameRx.values.subcmd1 = 0;
+	radio1FrameRx.values.subcmd2 = 0;
+	radio1FrameRx.values.subcmd3 = 0;
+	radio1FrameRx.values.subcmd4 = 0;
+	//radio1FrameRx.values.free[23]; TODO
+	radio1FrameRx.values.crc8 = 0;
+
 
 	/* Receiver address */
 	uint8_t TxAddress[] = {
@@ -335,6 +347,18 @@ void vWirelessCommTask( void *pvParameters )
 			if (radio1->DataReady()) {
 				/* Get data from NRF24L01+ */
 				radio1->GetPayload(radio1FrameRx.buffer);
+				if (radio1FrameRx.values.start == commdirection_t::rpi_to_irm) //TODO: add crc
+				{
+					// Post received message.
+					cmd.target = radio1FrameRx.values.target;
+					cmd.id = radio1FrameRx.values.id;
+					cmd.cmd = radio1FrameRx.values.cmd;
+					cmd.subcmd1 = radio1FrameRx.values.subcmd1;
+					cmd.subcmd1 = radio1FrameRx.values.subcmd2;
+					cmd.subcmd1 = radio1FrameRx.values.subcmd3;
+					cmd.subcmd1 = radio1FrameRx.values.subcmd4;
+					xQueueSendToFront(externalCommandsQueue, &cmd, ( TickType_t ) 0);
+				}
 			}
 
 			//if(TODO){

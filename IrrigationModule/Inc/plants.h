@@ -24,6 +24,7 @@
 struct plant_s{
 	const string name;
 	const uint32_t id;
+	float health;
 };
 
 using namespace std;

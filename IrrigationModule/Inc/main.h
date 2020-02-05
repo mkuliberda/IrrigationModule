@@ -61,9 +61,11 @@
 /* Private define ------------------------------------------------------------*/
 #define TANK1STATUS_BUFFER_LENGTH 1
 #define PUMPSSTATUS_BUFFER_LENGTH 1
-#define SOILMOISTURE_BUFFER_LENGTH 8
+#define PLANTSHEALTH_BUFFER_LENGTH 4
 #define BATTERY_BUFFER_LENGTH 1
 #define ADCVALUES_BUFFER_LENGTH 9
+#define EXTCMDS_BUFFER_LENGTH 10
+#define SYSSTATUS_BUFFER_LENGTH 1
 
 #define DRDY_Pin GPIO_PIN_2
 #define DRDY_GPIO_Port GPIOE
