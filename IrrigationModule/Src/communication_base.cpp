@@ -5,7 +5,7 @@
  *      Author: Mati
  */
 
-#include <wireless_base.h>
+#include <communication_base.h>
 
 communicationtype_t& Wireless::typeGet(void){
 	return this->commType;

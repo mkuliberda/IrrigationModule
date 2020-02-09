@@ -21,17 +21,28 @@
 #include "main.h"
 #include "adc.h"
 #include "nrf24l01.h"
+#include "communication_base.h"
 
+#define PLANT1_ID 1
+#define PLANT2_ID 2
+#define PLANT3_ID 3
+#define PLANT4_ID 4
+#define SECTOR1_ID 1
+#define SECTOR2_ID 2
+#define SECTOR3_ID 3
+#define WATERTANK1_ID 1
 
 extern SemaphoreHandle_t xUserButtonSemaphore;
 extern SemaphoreHandle_t xADCReadingsReadySemaphore;
 extern xQueueHandle ADCValuesQueue;
 extern xQueueHandle tank1StatusQueue;
 extern xQueueHandle pumpsStatusQueue;
+extern xQueueHandle sectorsStatusQueue;
 extern xQueueHandle plantsHealthQueue;
 extern xQueueHandle batteryStatusQueue;
 extern xQueueHandle externalCommandsQueue;
 extern xQueueHandle sysStatusQueue;
+extern xQueueHandle serviceQueue;
 
 
 void vADCReadTask( void *pvParameters )
@@ -86,35 +97,41 @@ void vIrrigationControlTask( void *pvParameters )
 {
 
 	portTickType xLastWakeTime;
-	const portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
+	constexpr portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
 	xLastWakeTime=xTaskGetTickCount();
 
-	const double tank1HeightMeters = 0.43;
-	const double tank1VolumeLiters = 5.0;
-	const float WLSensorHighPositionMeters = 0.12;
-	const float WLSensorLowPositionMeters = 0.38;
+	constexpr double tank1HeightMeters = 0.43;
+	constexpr double tank1VolumeLiters = 5.0;
+	constexpr float WLSensorHighPositionMeters = 0.12;
+	constexpr float WLSensorLowPositionMeters = 0.38;
 
-	const struct gpio_s pump1gpio = {PUMP1_GPIO_Port, PUMP1_Pin};
-	const struct gpio_s pump1led  = {PUMP1LD_GPIO_Port, PUMP1LD_Pin};
-	const struct gpio_s pump2gpio = {PUMP2_GPIO_Port, PUMP2_Pin};
-	const struct gpio_s pump2led  = {PUMP2LD_GPIO_Port, PUMP2LD_Pin};
-	const struct gpio_s pump3gpio = {PUMP3_GPIO_Port, PUMP3_Pin};
-	const struct gpio_s pump3led  = {PUMP3LD_GPIO_Port, PUMP3LD_Pin};
-	const struct gpio_s ds18b20_1gpio = {DS18B20_1_GPIO_Port, DS18B20_1_Pin};
+	constexpr struct gpio_s pump1gpio = {PUMP1_GPIO_Port, PUMP1_Pin};
+	constexpr struct gpio_s pump1led  = {PUMP1LD_GPIO_Port, PUMP1LD_Pin};
+	constexpr struct gpio_s pump2gpio = {PUMP2_GPIO_Port, PUMP2_Pin};
+	constexpr struct gpio_s pump2led  = {PUMP2LD_GPIO_Port, PUMP2LD_Pin};
+	constexpr struct gpio_s pump3gpio = {PUMP3_GPIO_Port, PUMP3_Pin};
+	constexpr struct gpio_s pump3led  = {PUMP3LD_GPIO_Port, PUMP3LD_Pin};
+	constexpr struct gpio_s ds18b20_1gpio = {DS18B20_1_GPIO_Port, DS18B20_1_Pin};
 
-	const struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
-	const struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
+	constexpr struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
+	constexpr struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
-	struct plant_s plant1 = {"Pelargonia1", 1, 0.0};
-	struct plant_s plant2 = {"Surfinia1", 2, 0.0};
-	struct plant_s plant3 = {"Surfinia2", 3, 0.0};
-	struct plant_s plant4 = {"Trawa", 4, 0.0};
+	struct plant_s plant1 = {"Pelargonia1", PLANT1_ID, 0.0};
+	struct plant_s plant2 = {"Surfinia1", PLANT2_ID, 0.0};
+	struct plant_s plant3 = {"Surfinia2", PLANT3_ID, 0.0};
+	struct plant_s plant4 = {"Trawa", PLANT4_ID, 0.0};
+
+	struct servicecode_s errorcode;
+
+	uint8_t rcvd_cmds_nbr = 0;
 
 	double dt_seconds = xFrequencySeconds/1000.0f;
 
 	uint32_t tank1Status = 0;
 	uint32_t pumpsStatus = 0; //8 bits per pump
-	uint8_t sectorStatus[3]; //TODO: encode this like pumpStatus?
+	uint32_t sectorsStatus = 0;
+	uint8_t sectorStatus[MAX_ENTITIES];
+	bool sectorStatusReq[MAX_ENTITIES];
 	uint16_t sector1ADCValue[1] = {1};
 	uint16_t sector2ADCValue[2] = {2,3};
 	uint16_t sector3ADCValue[1] = {4};
@@ -122,7 +139,7 @@ void vIrrigationControlTask( void *pvParameters )
 	uint16_t batteryADCValue[1] = {9};
 
 
-	IrrigationSector *sector1 = new IrrigationSector(1);
+	IrrigationSector *sector1 = new IrrigationSector(SECTOR1_ID);
 	sector1->plantCreate(plant1.name, plant1.id);
 	sector1->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector1->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
@@ -131,7 +148,7 @@ void vIrrigationControlTask( void *pvParameters )
 	}
 
 
-	IrrigationSector *sector2 = new IrrigationSector(2);
+	IrrigationSector *sector2 = new IrrigationSector(SECTOR2_ID);
 	sector2->plantCreate(plant2.name, plant2.id);
 	sector2->plantCreate(plant3.name, plant3.id);
 	sector2->irrigationController->modeSet(pumpcontrollermode_t::external);
@@ -142,7 +159,7 @@ void vIrrigationControlTask( void *pvParameters )
 	}
 
 
-	IrrigationSector *sector3 = new IrrigationSector(3);
+	IrrigationSector *sector3 = new IrrigationSector(SECTOR3_ID);
 	sector3->plantCreate(plant4.name, plant4.id);
 	sector3->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector3->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
@@ -151,7 +168,7 @@ void vIrrigationControlTask( void *pvParameters )
 	}
 
 
-	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
+	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters, WATERTANK1_ID);
 	if (tank1->waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
 		tank1->vOpticalWLSensors.at(0).init(WLSensorHighPositionMeters, opticalwaterlevelsensor1gpio);
 	}
@@ -163,16 +180,18 @@ void vIrrigationControlTask( void *pvParameters )
 	}
 
 
-	bool test_cmd1 = true;
-	bool test_cmd2 = true;
-	bool test_cmd3 = true;
-	bool planthealth_req = true;
+	bool sector1_irrigate = true; //TODO: false
+	bool sector2_irrigate = true; //TODO: false
+	bool sector3_irrigate = true; //TODO: false
+	bool watertank1_valid = false;
+
+
 
     for( ;; )
     {
-    	dt_seconds = xFrequencySeconds/1000.0f;
-    	tank1->checkStateOK(dt_seconds, tank1Status); //TODO: first check state and base pump running if state OK, there is a BUG here
-    	xQueueOverwrite( tank1StatusQueue, &tank1Status);
+    	//TODO calculate dt_seconds based on real world period instead of a fixed one
+    	rcvd_cmds_nbr = 0;
+    	watertank1_valid = tank1->checkStateOK(dt_seconds, tank1Status);
 
     	if(xADCReadingsReadySemaphore != NULL)
     	{
@@ -215,20 +234,182 @@ void vIrrigationControlTask( void *pvParameters )
 		   }
     	}
 
-		sector1->update(dt_seconds, test_cmd1, sector1ADCValue, 1);
-		sector2->update(dt_seconds, test_cmd2, sector2ADCValue, 2);
-		sector3->update(dt_seconds, test_cmd3, sector3ADCValue, 1);
 
-		if(planthealth_req) plant1.health = sector1->planthealthGet(plant1.id);
-		if(planthealth_req) plant2.health = sector2->planthealthGet(plant2.id);
-		if(planthealth_req) plant3.health = sector2->planthealthGet(plant3.id);
-		if(planthealth_req) plant4.health = sector3->planthealthGet(plant4.id);
+		struct extcmd_s receivedcommands[EXTCMDS_BUFFER_LENGTH];
+		struct extcmd_s rx;
+    	while (xQueueReceive(externalCommandsQueue, &rx, ( TickType_t ) 10)){
+    		receivedcommands[rcvd_cmds_nbr] = rx;
+    		rcvd_cmds_nbr++;
+    	}
 
 
-	   	pumpStateEncode(sector1->irrigationController->pBinPump->statusGet(), pumpsStatus);
-	    pumpStateEncode(sector2->irrigationController->pBinPump->statusGet(), pumpsStatus);
-	    pumpStateEncode(sector3->irrigationController->pBinPump->statusGet(), pumpsStatus);
-	    xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
+    	for (uint8_t i=0; i < rcvd_cmds_nbr; i++)
+    	{
+			if(receivedcommands[i].cmd == externalcommand_t::requeststatus){
+
+				switch(receivedcommands[i].target){
+				case localtarget_t::watertank:
+					xQueueOverwrite( tank1StatusQueue, &tank1Status);
+					break;
+
+				case localtarget_t::pump:
+				   	pumpStateEncode(sector1->irrigationController->pBinPump->statusGet(), pumpsStatus);
+				    pumpStateEncode(sector2->irrigationController->pBinPump->statusGet(), pumpsStatus);
+				    pumpStateEncode(sector3->irrigationController->pBinPump->statusGet(), pumpsStatus);
+				    xQueueOverwrite( pumpsStatusQueue, &pumpsStatus);
+					break;
+
+				case localtarget_t::plant:
+					if		(receivedcommands[i].target_id == plant1.id){
+						plant1.health = sector1->planthealthGet(plant1.id);
+						xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
+					}
+					else if	(receivedcommands[i].target_id == plant2.id){
+						plant2.health = sector2->planthealthGet(plant2.id);
+						xQueueSendToFront(plantsHealthQueue, &plant2.health, ( TickType_t ) 0);
+					}
+					else if	(receivedcommands[i].target_id == plant3.id){
+						plant3.health = sector2->planthealthGet(plant3.id);
+						xQueueSendToFront(plantsHealthQueue, &plant3.health, ( TickType_t ) 0);
+					}
+					else if	(receivedcommands[i].target_id == plant4.id){
+						plant4.health = sector3->planthealthGet(plant4.id);
+						xQueueSendToFront(plantsHealthQueue, &plant4.health, ( TickType_t ) 0);
+					}
+					else if (receivedcommands[i].target_id == 255){
+						plant1.health = sector1->planthealthGet(plant1.id);
+						xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
+						plant2.health = sector2->planthealthGet(plant2.id);
+						xQueueSendToFront(plantsHealthQueue, &plant2.health, ( TickType_t ) 0);
+						plant3.health = sector2->planthealthGet(plant3.id);
+						xQueueSendToFront(plantsHealthQueue, &plant3.health, ( TickType_t ) 0);
+						plant4.health = sector3->planthealthGet(plant4.id);
+						xQueueSendToFront(plantsHealthQueue, &plant4.health, ( TickType_t ) 0);
+					}
+					break;
+
+				case localtarget_t::powersupply:
+					break;
+
+				case localtarget_t::sys:
+					break;
+
+				case localtarget_t::sector:
+					if		(receivedcommands[i].target_id == sector1->sectorGet()){
+						sectorStatusReq[0] = true;
+					}
+					else if	(receivedcommands[i].target_id == sector2->sectorGet()){
+						sectorStatusReq[1] = true;
+					}
+					else if	(receivedcommands[i].target_id == sector3->sectorGet()){
+						sectorStatusReq[2] = true;
+					}
+					else if	(receivedcommands[i].target_id == 255){
+						sectorStatusReq[0] = true;
+						sectorStatusReq[1] = true;
+						sectorStatusReq[2] = true;
+					}
+					break;
+
+				default:
+					break;
+			}
+			}else if(receivedcommands[i].cmd == externalcommand_t::enable){
+
+				if (receivedcommands[i].target == localtarget_t::pump){
+
+					switch (receivedcommands[i].target_id){
+					case 1:
+						if (watertank1_valid) sector1_irrigate = true;
+						else sector1_irrigate = false;
+						break;
+
+					case 2:
+						if (watertank1_valid) sector2_irrigate = true;
+						else sector2_irrigate = false;
+						break;
+
+					case 3:
+						if (watertank1_valid) sector3_irrigate = true;
+						else sector3_irrigate = false;
+						break;
+
+					default:
+						break;
+					}
+				}
+			}else if(receivedcommands[i].cmd == externalcommand_t::disable){
+
+				if (receivedcommands[i].target == localtarget_t::pump){
+
+					switch (receivedcommands[i].target_id){
+					case 1:
+						sector1_irrigate = false;
+						break;
+
+					case 2:
+						sector2_irrigate = false;
+						break;
+
+					case 3:
+						sector3_irrigate = false;
+						break;
+
+					default:
+						break;
+					}
+				}
+			}
+
+    	}
+
+    	sectorStatus[0] = sector1->update(dt_seconds, sector1_irrigate, sector1ADCValue, 1);
+    	sectorStatus[1] = sector2->update(dt_seconds, sector2_irrigate, sector2ADCValue, 2);
+    	sectorStatus[2] = sector3->update(dt_seconds, sector3_irrigate, sector3ADCValue, 1);
+    	sectorsStatus = sectorStatus[3]<<24 | sectorStatus[2]<<16 | sectorStatus[1]<<8 | sectorStatus[0];
+
+
+    	if (sectorStatusReq[0] or sectorStatusReq[1] or sectorStatusReq[2] or sectorStatusReq[3]){
+    		xQueueOverwrite(sectorsStatusQueue, &sectorsStatus);
+    		sectorStatusReq[0] = false;
+    		sectorStatusReq[1] = false;
+    		sectorStatusReq[2] = false;
+    		sectorStatusReq[3] = false;
+    	}
+
+
+    	if(xUserButtonSemaphore != NULL){
+		   if (xSemaphoreTake(xUserButtonSemaphore, (portTickType)2) == pdTRUE){
+			   errorcode.reporter = localtarget_t::sector;
+			   errorcode.id = 255;
+			   errorcode.code = sectorsStatus;
+			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
+
+			   errorcode.reporter = localtarget_t::watertank;
+			   errorcode.id = tank1->idGet();
+			   errorcode.code = tank1Status;
+			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
+
+			   pumpStateEncode(sector1->irrigationController->pBinPump->statusGet(), pumpsStatus);
+			   pumpStateEncode(sector2->irrigationController->pBinPump->statusGet(), pumpsStatus);
+			   pumpStateEncode(sector3->irrigationController->pBinPump->statusGet(), pumpsStatus);
+			   errorcode.reporter = localtarget_t::pump;
+			   errorcode.id = 255;
+			   errorcode.code = pumpsStatus;
+			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
+
+			   errorcode.reporter = localtarget_t::powersupply; //TODO
+			   errorcode.id = 255;
+			   errorcode.code = 0xffffffff;
+			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
+
+			   errorcode.reporter = localtarget_t::sys; //TODO
+			   errorcode.id = 255;
+			   errorcode.code = 0xffffffff;
+			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
+
+		   }
+    	}
 
 
     	LEDToggle(6);
@@ -244,31 +425,15 @@ void vStatusNotifyTask( void *pvParameters )
 	portTickType xLastWakeTime;
 	const portTickType xFrequencySeconds = 1 * TASK_FREQ_MULTIPLIER; //<1Hz
 	xLastWakeTime=xTaskGetTickCount();
-	USART_Buffer32 tank1Status;
-	USART_Buffer32 pumpsStatus;
-	array<struct pumpstatus_s,4> a_pumpStatus;
-
-
+	servicecode_u rx;
 
     for( ;; )
     {
-
-    	if(xUserButtonSemaphore != NULL)
-    	{
-		   if (xSemaphoreTake(xUserButtonSemaphore, (portTickType)2) == pdTRUE)
-		   {
-			   if (xQueuePeek(pumpsStatusQueue, &pumpsStatus.status, 0) == pdPASS)
-			   {
-				   pumpStateDecode(a_pumpStatus, pumpsStatus.status);
-				   HAL_UART_Transmit(&huart4, pumpsStatus.buffer, 4, 50);
-			   }
-			   if (xQueuePeek( tank1StatusQueue, &tank1Status.status, 0 ) == pdPASS)
-			   {
-				   HAL_UART_Transmit(&huart4, tank1Status.buffer, 4, 50);
-			   }
-			   HAL_GPIO_WritePin(LD8_GPIO_Port, LD8_Pin, GPIO_PIN_RESET);
-		   }
+		while (xQueueReceive(serviceQueue, &rx.servicecode, ( TickType_t ) 10)){
+			HAL_UART_Transmit(&huart4, rx.buffer, 6, 10);
+			HAL_GPIO_WritePin(LD8_GPIO_Port, LD8_Pin, GPIO_PIN_RESET);
 		}
+
         vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 
@@ -285,18 +450,16 @@ void vWirelessCommTask( void *pvParameters )
 	rxframe_u radio1FrameRx;
 	struct extcmd_s cmd;
 	bool radio1Configured = false;
+	uint32_t tank1Status = 0;
+	uint32_t pumpsStatus = 0;
+	struct plant_s plant;
+
+	//TODO: remove for release
+	uint8_t test_counter = 0;
+	//-------------------------
 
 	radio1FrameTx.values.start = commdirection_t::irm_to_rpi;
-	radio1FrameTx.values.target = 0;
-	radio1FrameTx.values.id = 0;
-	radio1FrameTx.values.val = 0.0;
-	//radio1FrameTx.values.desc = "empty description"; TODO
-	radio1FrameTx.values.crc8 = 0;
-
-	//radio1FrameRx.values.start = 0;
-	//radio1FrameRx.values.target = 0;
-	radio1FrameRx.values.id = 0;
-	//radio1FrameRx.values.cmd = 0;
+	radio1FrameRx.values.target_id = 0;
 	radio1FrameRx.values.subcmd1 = 0;
 	radio1FrameRx.values.subcmd2 = 0;
 	radio1FrameRx.values.subcmd3 = 0;
@@ -344,35 +507,104 @@ void vWirelessCommTask( void *pvParameters )
     	if(radio1Configured == true){
 
 			/* If data is ready on NRF24L01+ */
-			if (radio1->DataReady()) {
+			while (radio1->DataReady()) {
 				/* Get data from NRF24L01+ */
 				radio1->GetPayload(radio1FrameRx.buffer);
 				if (radio1FrameRx.values.start == commdirection_t::rpi_to_irm) //TODO: add crc
 				{
 					// Post received message.
 					cmd.target = radio1FrameRx.values.target;
-					cmd.id = radio1FrameRx.values.id;
+					cmd.target_id = radio1FrameRx.values.target_id;
 					cmd.cmd = radio1FrameRx.values.cmd;
 					cmd.subcmd1 = radio1FrameRx.values.subcmd1;
 					cmd.subcmd1 = radio1FrameRx.values.subcmd2;
 					cmd.subcmd1 = radio1FrameRx.values.subcmd3;
 					cmd.subcmd1 = radio1FrameRx.values.subcmd4;
-					xQueueSendToFront(externalCommandsQueue, &cmd, ( TickType_t ) 0);
+					xQueueSendToFront(externalCommandsQueue, (void *)&cmd, ( TickType_t ) 0);
 				}
 			}
 
-			//if(TODO){
-			radio1->TransmitPayload(radio1FrameTx.buffer);
-			//}
+			if (xQueueReceive( tank1StatusQueue, &tank1Status, 0 ) == pdPASS){
+				radio1FrameTx.values.sender = localtarget_t::watertank;
+				radio1FrameTx.values.sender_id = 1;
+				radio1FrameTx.values.val.uint32 = tank1Status;
+				radio1FrameTx.values.crc8 = 0;						//TODO
+				radio1->TransmitPayload(radio1FrameTx.buffer);
+				/* Wait for data to be sent */
+				do {
+					/* Wait till sending */
+					transmissionStatus = radio1->GetTransmissionStatus();
+				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
 
-			/* Wait for data to be sent */
-			do {
-				/* Wait till sending */
-				transmissionStatus = radio1->GetTransmissionStatus();
-			} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
+			}
+			else if(xQueueReceive( pumpsStatusQueue, &pumpsStatus, 0 ) == pdPASS){
+				radio1FrameTx.values.sender = localtarget_t::pump;
+				radio1FrameTx.values.sender_id = 255;
+				radio1FrameTx.values.val.uint32 = pumpsStatus;
+				radio1FrameTx.values.crc8 = 0;						//TODO
+				radio1->TransmitPayload(radio1FrameTx.buffer);
+				/* Wait for data to be sent */
+				do {
+					/* Wait till sending */
+					transmissionStatus = radio1->GetTransmissionStatus();
+				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
+				test_counter++;
+			}
+
+			while(xQueueReceive( plantsHealthQueue, &plant, 0 )){
+				radio1FrameTx.values.sender = localtarget_t::plant;
+				radio1FrameTx.values.sender_id = plant.id;
+				radio1FrameTx.values.val.float32 = plant.health;
+				//radio1FrameTx.values.desc							//TODO
+				radio1FrameTx.values.crc8 = 0;						//TODO
+				radio1->TransmitPayload(radio1FrameTx.buffer);
+				/* Wait for data to be sent */
+				do {
+					/* Wait till sending */
+					transmissionStatus = radio1->GetTransmissionStatus();
+				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
+
+			}
 
 			/* Go back to RX mode */
 			radio1->PowerUpRx();
+
+			/*switch(test_counter){
+
+			case 0:
+				cmd.target = localtarget_t::pump;
+				cmd.target_id = 2;
+				cmd.cmd = externalcommand_t::enable;
+				xQueueSendToFront(externalCommandsQueue, (void *)&cmd, ( TickType_t ) 0);
+				break;
+			case 1:
+				cmd.target = localtarget_t::watertank;
+				cmd.target_id = 1;
+				cmd.cmd = externalcommand_t::requeststatus;
+				xQueueSendToFront(externalCommandsQueue, (void *)&cmd, ( TickType_t ) 0);
+				break;
+			case 2:
+				cmd.target = localtarget_t::plant;
+				cmd.target_id = 255;
+				cmd.cmd = externalcommand_t::requeststatus;
+				xQueueSendToFront(externalCommandsQueue, (void *)&cmd, ( TickType_t ) 0);
+				break;
+			case 3:
+				cmd.target = localtarget_t::plant;
+				cmd.target_id = 1;
+				cmd.cmd = externalcommand_t::requeststatus;
+				xQueueSendToFront(externalCommandsQueue, (void *)&cmd, ( TickType_t ) 0);
+				break;
+			case 4:
+				cmd.target = localtarget_t::pump;
+				cmd.target_id = 2;
+				cmd.cmd = externalcommand_t::disable;
+				xQueueSendToFront(externalCommandsQueue, (void *)&cmd, ( TickType_t ) 0);
+				break;
+			}
+
+			if (test_counter < 10) test_counter++;
+			else test_counter = 0;*/
     	}
 
     	LEDToggle(7);

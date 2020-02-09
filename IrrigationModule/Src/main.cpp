@@ -46,6 +46,7 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
+#include <communication_base.h>
 #include "main.h"
 #include "stm32f3xx_hal.h"
 #include "cmsis_os.h"
@@ -57,6 +58,7 @@
 #include "gpio.h"
 #include "freertoss.h"
 #include "freeRTOSTasks.h"
+#include "utilities.h"
 #include "plants.h"
 
 /* USER CODE BEGIN Includes */
@@ -65,10 +67,12 @@ SemaphoreHandle_t xADCReadingsReadySemaphore = NULL;
 xQueueHandle ADCValuesQueue;
 xQueueHandle tank1StatusQueue;
 xQueueHandle pumpsStatusQueue;
+xQueueHandle sectorsStatusQueue;
 xQueueHandle plantsHealthQueue;
 xQueueHandle batteryStatusQueue;
 xQueueHandle sysStatusQueue;
 xQueueHandle externalCommandsQueue;
+xQueueHandle serviceQueue;
 
 
 /* USER CODE END Includes */
@@ -130,10 +134,12 @@ int main(void)
   ADCValuesQueue = xQueueCreate(ADCVALUES_BUFFER_LENGTH, sizeof( uint16_t ) );
   tank1StatusQueue = xQueueCreate(TANK1STATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
   pumpsStatusQueue = xQueueCreate(PUMPSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
-  plantsHealthQueue = xQueueCreate(PLANTSHEALTH_BUFFER_LENGTH, sizeof( struct plant_s * ) );
+  sectorsStatusQueue = xQueueCreate(SECTORSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
+  plantsHealthQueue = xQueueCreate(PLANTSHEALTH_BUFFER_LENGTH, sizeof( plant_s ) );
   sysStatusQueue = xQueueCreate(SYSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
   batteryStatusQueue = xQueueCreate(BATTERY_BUFFER_LENGTH, sizeof( uint32_t ) );
-  externalCommandsQueue = xQueueCreate(EXTCMDS_BUFFER_LENGTH, sizeof( struct extcmd_s * ) );
+  externalCommandsQueue = xQueueCreate(EXTCMDS_BUFFER_LENGTH, sizeof( extcmd_s) );
+  serviceQueue = xQueueCreate(SERVICE_BUFFER_LENGTH, sizeof( servicecode_s) );
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */

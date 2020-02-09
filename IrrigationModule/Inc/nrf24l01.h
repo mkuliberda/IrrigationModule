@@ -28,7 +28,7 @@ IRQ			Not used	Interrupt pin. Goes low when active. Pin functionality is active,
 */
 
 
-#include <wireless_base.h>
+#include <communication_base.h>
 
 #ifndef RPI
 #include "stm32f3xx_hal.h"

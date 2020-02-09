@@ -5,8 +5,8 @@
  *      Author: Mati
  */
 
-#ifndef WIRELESS_BASE_H_
-#define WIRELESS_BASE_H_
+#ifndef COMMUNICATION_BASE_H_
+#define COMMUNICATION_BASE_H_
 
 #ifndef RPI
 #include "stm32f3xx_hal.h"
@@ -30,13 +30,22 @@ enum class commdirection_t{
 	max = 255
 };
 
+enum class externalcommand_t{
+	none,
+	disable,
+	enable,
+	requeststatus,
+	antifreeze,
+	max = 255
+};
+
 enum class localtarget_t{
 	none,
 	plant,
 	watertank,
 	pump,
 	sector,
-	system,
+	sys,
 	powersupply,
 	max = 255
 };
@@ -46,18 +55,16 @@ enum class remotetarget_t{
 	max = 255
 };
 
-enum class externalcommand_t{
-	none,
-	disable,
-	enable,
-	requeststatus,
-	max = 255
+struct servicecode_s{
+	localtarget_t reporter;
+	uint8_t id;
+	uint32_t code;
 };
 
 struct wframeRx_s {
 	commdirection_t start;
 	localtarget_t target;
-	uint8_t id;
+	uint8_t target_id;
 	externalcommand_t cmd;
 	uint8_t subcmd1;
 	uint8_t subcmd2;
@@ -67,18 +74,28 @@ struct wframeRx_s {
 	uint8_t crc8;
 };
 
+union val_u{
+	float float32;
+	uint32_t uint32;
+};
+
+union USART_Buffer32{
+	uint32_t status;
+	uint8_t buffer[4];
+};
+
 struct wframeTx_s {
 	commdirection_t start;
-	uint8_t target;
-	uint8_t id;
-	float val; //<<Make sure this is 32bit
+	localtarget_t sender;
+	uint8_t sender_id;
+	union val_u val; 				//<<Make sure this is 32bit
 	char  desc[24];
 	uint8_t crc8;
 };
 
 struct extcmd_s{
 	localtarget_t target;
-	uint8_t id;
+	uint8_t target_id;
 	externalcommand_t cmd;
 	uint8_t subcmd1;
 	uint8_t subcmd2;
@@ -95,6 +112,12 @@ union rxframe_u{
 	uint8_t 	buffer[32];
 	wframeRx_s 	values;
 };
+
+union servicecode_u{
+	servicecode_s servicecode;
+	uint8_t buffer[6];
+};
+
 
 class Wireless{
 
@@ -116,4 +139,4 @@ public:
 
 
 
-#endif /* WIRELESS_BASE_H_ */
+#endif /* COMMUNICATION_BASE_H_ */
