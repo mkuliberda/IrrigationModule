@@ -21,7 +21,6 @@
 #include "main.h"
 #include "adc.h"
 #include "nrf24l01.h"
-#include "communication_base.h"
 
 #define PLANT1_ID 1
 #define PLANT2_ID 2
