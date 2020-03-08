@@ -1,0 +1,3 @@
+[submodule "IrrigationModule/Middlewares/WirelessComm"]
+	path = IrrigationModule/Middlewares/WirelessComm
+	url = git@github.com:mkuliberda/WirelessComm.git
