@@ -37,7 +37,9 @@ enum class pumpstate_t{
 	running,
 	reversing,
 	stopped,
-	waiting
+	waiting,
+	fault,
+	sleep
 };
 
 enum class pumptype_t{
@@ -144,10 +146,8 @@ class DRV8833Pump: public Pump{
 private:
 
 	double 						runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
-	double						revtimeSeconds;
 	double 						idletimeSeconds;				///< current idletime incrementing in stopped and waiting state [seconds]
 	uint32_t 					runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
-	uint32_t					revtimeLimitSeconds;
 	uint32_t 					idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
 	array<struct gpio_s, 4> 	aIN;							///< in1, in2, in3, in4
 	struct gpio_s 				led;
@@ -160,10 +160,6 @@ private:
 	void 						idletimeReset(void);
 	void 						idletimeIncrease(const double & _dt);
 	double& 					idletimeGetSeconds(void);
-	void 						revtimeReset(void);
-	void 						revtimeIncrease(const double & _dt);
-	double& 					revtimeGetSeconds(void);
-
 
 protected:
 
@@ -193,11 +189,12 @@ public:
 	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
 	pumpstate_t& 				stateGet(void) override;
-	void 						forcestart(void);
-	void 						forcereverse(void);
-	void 						forcestop(void);
-	void 						sleepmodeSet(void);
-	bool						faultCheck(void);
+	bool 						forcestart(void);
+	bool 						forcereverse(void);
+	bool 						forcestop(void);
+	void 						setSleep(void);
+	void 						setEnable(void);
+	bool						isFault(void);
 
 };
 

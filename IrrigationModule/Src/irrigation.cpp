@@ -193,15 +193,10 @@ double& BinaryPump::idletimeGetSeconds(void){
 bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
 		const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led, \
 		const struct gpio_s & _fault, const struct gpio_s & _mode){
+
+	bool success = true;
+
 	this->status.id = _id;
-	this->aIN[0].pin = _pinout[0].pin;
-	this->aIN[0].port = _pinout[0].port;
-	this->aIN[1].pin = _pinout[1].pin;
-	this->aIN[1].port = _pinout[1].port;
-	this->aIN[2].pin = _pinout[2].pin;
-	this->aIN[2].port = _pinout[2].port;
-	this->aIN[3].pin = _pinout[3].pin;
-	this->aIN[3].port = _pinout[3].port;
 	this->fault.pin = _fault.pin;
 	this->fault.port = _fault.port;
 	this->mode.pin = _mode.pin;
@@ -210,24 +205,46 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	this->led.port = _led.port;
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
-	//TODO: to implement, set stop here based on type dc/bldc
-	this->stateSet(pumpstate_t::stopped);
 
-	return true;
+	switch (this->type){
+	case pumptype_t::drv8833_dc:
+		success = false;
+		break;
+	case pumptype_t::drv8833_bldc:
+		this->aIN[0].pin = _pinout[0].pin;
+		this->aIN[0].port = _pinout[0].port;
+		this->aIN[1].pin = _pinout[1].pin;
+		this->aIN[1].port = _pinout[1].port;
+		this->aIN[2].pin = _pinout[2].pin;
+		this->aIN[2].port = _pinout[2].port;
+		this->aIN[3].pin = _pinout[3].pin;
+		this->aIN[3].port = _pinout[3].port;
+		break;
+	default:
+		success = false;
+		break;
+	}
+
+	this->setEnable();
+
+	if (HAL_GPIO_ReadPin(this->fault.port, this->fault.pin)){
+		this->stop();
+	}
+	else{
+		this->stateSet(pumpstate_t::fault);
+		success = false;
+	}
+
+	return success;
 }
 
 bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
 		const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led, \
 		const struct gpio_s & _fault, const struct gpio_s & _mode){
+
+	bool success = true;
+
 	this->status.id = _id;
-	this->aIN[0].pin = _pinout[0].pin;
-	this->aIN[0].port = _pinout[0].port;
-	this->aIN[1].pin = _pinout[1].pin;
-	this->aIN[1].port = _pinout[1].port;
-	this->aIN[2].pin = 0;
-	this->aIN[2].port = nullptr;
-	this->aIN[3].pin = 0;
-	this->aIN[3].port = nullptr;
 	this->fault.pin = _fault.pin;
 	this->fault.port = _fault.port;
 	this->mode.pin = _mode.pin;
@@ -236,10 +253,37 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	this->led.port = _led.port;
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
-	//TODO: to implement, set stop here based on type dc/bldc
-	this->stateSet(pumpstate_t::stopped);
 
-	return true;
+	switch (this->type){
+	case pumptype_t::drv8833_dc:
+		this->aIN[0].pin = _pinout[0].pin;
+		this->aIN[0].port = _pinout[0].port;
+		this->aIN[1].pin = _pinout[1].pin;
+		this->aIN[1].port = _pinout[1].port;
+		this->aIN[2].pin = 0;
+		this->aIN[2].port = nullptr;
+		this->aIN[3].pin = 0;
+		this->aIN[3].port = nullptr;
+		break;
+	case pumptype_t::drv8833_bldc:
+		success = false;
+		break;
+	default:
+		success = false;
+		break;
+	}
+
+	this->setEnable();
+
+	if (HAL_GPIO_ReadPin(this->fault.port, this->fault.pin)){
+		this->stop();
+	}
+	else{
+		this->stateSet(pumpstate_t::fault);
+		success = false;
+	}
+
+	return success;
 }
 
 void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed){
@@ -251,12 +295,23 @@ bool DRV8833Pump::start(void){
 	bool success = false;
 
 	if(this->isRunning() == false){
-
-		//TODO: to implement based on type, dc/bldc
 		this->stateSet(pumpstate_t::running);
 		this->idletimeReset();
 		this->runtimeReset();
-		success = true;
+
+		switch (this->type){
+		case pumptype_t::drv8833_dc:
+			HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
+			success = true;
+			break;
+		case pumptype_t::drv8833_bldc:
+			//TODO:
+			break;
+		default:
+			break;
+		}
 	}
 
 	return success;
@@ -267,51 +322,162 @@ bool DRV8833Pump::stop(void){
 	bool success = false;
 
 	if(this->isRunning() == true){
-
-		//TODO: to implement based on type, dc/bldc
 		this->stateSet(pumpstate_t::stopped);
 		this->idletimeReset();
 		this->runtimeReset();
-		success = true;
+
+		switch (this->type){
+		case pumptype_t::drv8833_dc:
+			HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
+			success = true;
+			break;
+		case pumptype_t::drv8833_bldc:
+			//TODO:
+			break;
+		default:
+			break;
+		}
 	}
 
 	return success;
 }
 
 bool DRV8833Pump::reverse(void){
-	//TODO: to implement based on type, dc/bldc
-	return true;
+
+	bool success = false;
+
+	this->stateSet(pumpstate_t::reversing);
+	this->idletimeReset();
+	this->runtimeReset();
+
+	switch (this->type){
+	case pumptype_t::drv8833_dc:
+		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
+		success = true;
+		break;
+	case pumptype_t::drv8833_bldc:
+		//TODO:
+		break;
+	default:
+		break;
+	}
+
+	return success;
+
 }
 
-void DRV8833Pump::forcestart(void){
+bool DRV8833Pump::forcestart(void){
 
-	if(this->isRunning() == false) this->runtimeReset();
+	bool success = true;
 
-	//TODO: to implement based on type, dc/bldc
-	this->stateSet(pumpstate_t::running);
 	this->status.forced = true;
+
+	switch (this->type){
+	case pumptype_t::drv8833_dc:
+		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
+		this->stateSet(pumpstate_t::running);
+		break;
+	case pumptype_t::drv8833_bldc:
+		//TODO:
+		success = false;
+		break;
+	default:
+		success = false;
+		break;
+	}
+
+	if(this->isRunning() == false){
+		this->runtimeReset();
+	}
+	else{
+		success = false;
+	}
+
+	return success;
 }
-void DRV8833Pump::forcestop(void){
+bool DRV8833Pump::forcestop(void){
 
-	if (this->isRunning() == true) this->idletimeReset();
+	bool success = true;
 
-	//TODO: to implement based on type, dc/bldc
-	this->stateSet(pumpstate_t::stopped);
 	this->status.forced = true;
+
+	switch (this->type){
+	case pumptype_t::drv8833_dc:
+		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
+		this->stateSet(pumpstate_t::stopped);
+		break;
+	case pumptype_t::drv8833_bldc:
+		//TODO:
+		success = false;
+		break;
+	default:
+		success = false;
+		break;
+	}
+
+	if(this->isRunning() == true){
+		this->idletimeReset();
+	}
+	else{
+		success = false;
+	}
+
+	return success;
 }
 
-void DRV8833Pump::forcereverse(void){
-	//TODO: to implement based on type, dc/bldc
+bool DRV8833Pump::forcereverse(void){
+
+	bool success = true;
+
+	this->status.forced = true;
+
+	switch (this->type){
+	case pumptype_t::drv8833_dc:
+		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_SET);
+		this->stateSet(pumpstate_t::reversing);
+		break;
+	case pumptype_t::drv8833_bldc:
+		//TODO:
+		success = false;
+		break;
+	default:
+		success = false;
+		break;
+	}
+
+	if(this->isRunning() == false){
+		this->runtimeReset();
+	}
+	else{
+		success = false;
+	}
+
+	return success;
 }
 
-void DRV8833Pump::sleepmodeSet(void){
-	//TODO: to implement
-}
-bool DRV8833Pump::faultCheck(void){
-	//TODO: to implement
-	return 0;
+void DRV8833Pump::setSleep(void){
+	this->stop();
+	HAL_GPIO_WritePin(this->mode.port, this->mode.pin, GPIO_PIN_RESET);
+	this->stateSet(pumpstate_t::sleep);
 }
 
+void DRV8833Pump::setEnable(void){
+	this->stop();
+	HAL_GPIO_WritePin(this->mode.port, this->mode.pin, GPIO_PIN_SET);
+}
+bool DRV8833Pump::isFault(void){
+	return HAL_GPIO_ReadPin(this->fault.port, this->fault.pin) ? true : false;
+}
 
 pumpstate_t& DRV8833Pump::stateGet(void){
 	return this->state;
@@ -344,18 +510,6 @@ void DRV8833Pump::idletimeIncrease(const double & _dt){
 
 double& DRV8833Pump::idletimeGetSeconds(void){
 	return this->idletimeSeconds;
-}
-
-void DRV8833Pump::revtimeReset(void){
-	this->revtimeSeconds = 0.0;
-}
-
-void DRV8833Pump::revtimeIncrease(const double & _dt){
-	this->revtimeSeconds += _dt;
-}
-
-double& DRV8833Pump::revtimeGetSeconds(void){
-	return this->revtimeSeconds;
 }
 
 /***********************************/
@@ -788,33 +942,5 @@ void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _
 		if (_status.test(7)) a_pump[i].cmd_consumed = true;
 	}
 }
-
-
-
-///*! MoistureSensor template class implementation (Test only) */
-//
-//template <typename T> void MoistureSensor::rawreadingSet(T & _moisture_reading_raw){
-//	this->moisture_reading_raw = _moisture_reading_raw;
-//}
-//
-//
-//	//using index_t = array<int, 10>::size_type;
-//for (index_t i{ 0 }; i < _fixedwlsposition.size(); ++i)
-//{
-//	if ( _fixedwlsposition[i] > 0.0f)
-//	{
-		//OpticalWaterLevelSensor temp_WLSensor(_fixedwlsposition[i]);
-		//this->vWLSensors.push_back(temp_WLSensor);
-//	}
-//}
-//
-//
-///*! AnalogMoistureSensor class implementation (Test only TBD) */
-//
-//uint8_t AnalogMoistureSensor::moistureCalculatePercent(void){
-//	this->moisture_percent = this->moisture_reading_raw;
-//	return this->moisture_percent;
-//}
-
 
 
