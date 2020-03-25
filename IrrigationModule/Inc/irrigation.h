@@ -82,6 +82,7 @@ protected:
 
 	virtual bool 				start() = 0;
 	virtual bool 				stop() = 0;
+	pumptype_t& 				typeGet();
 
 public:
 
@@ -92,7 +93,7 @@ public:
 	bool init();
 	virtual void 				run(const double & _dt);
 	virtual void 				stateSet(const pumpstate_t & _st) = 0;
-	virtual pumpstate_t& 		stateGet(void) = 0;
+	pumpstate_t& 				stateGet(void);
 	virtual bool 				isRunning(void);
 	struct pumpstatus_s&		statusGet(void);
 
@@ -135,7 +136,6 @@ public:
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
 	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
-	pumpstate_t& 				stateGet(void) override;
 	void 						forcestart(void);
 	void 						forcestop(void);
 
@@ -188,7 +188,6 @@ public:
 								const struct gpio_s & _fault, const struct gpio_s & _mode);
 	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
-	pumpstate_t& 				stateGet(void) override;
 	bool 						forcestart(void);
 	bool 						forcereverse(void);
 	bool 						forcestop(void);

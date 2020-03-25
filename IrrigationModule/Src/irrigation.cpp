@@ -13,8 +13,12 @@ bool Pump::init(void){
 	return true;
 }
 
+pumpstate_t& Pump::stateGet(void){
+	return this->state;
+}
+
 bool Pump::isRunning(void){
-	return stateGet() == pumpstate_t::running ? true : false;
+	return this->stateGet() == pumpstate_t::running || this->stateGet() == pumpstate_t::reversing ? true : false;
 }
 
 void Pump::run(const double & _dt){
@@ -23,6 +27,10 @@ void Pump::run(const double & _dt){
 
 struct pumpstatus_s& Pump::statusGet(void){
 	return this->status;
+}
+
+pumptype_t& Pump::typeGet(void){
+	return this->type;
 }
 
 
@@ -152,11 +160,6 @@ void BinaryPump::forcestop(void){
 	this->status.forced = true;
 }
 
-
-pumpstate_t& BinaryPump::stateGet(void){
-	return this->state;
-}
-
 void BinaryPump::stateSet(const pumpstate_t & _state){
 	this->state = _state;
 	this->status.state = static_cast<uint32_t>(_state);
@@ -206,7 +209,7 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 
-	switch (this->type){
+	switch (this->typeGet()){
 	case pumptype_t::drv8833_dc:
 		success = false;
 		break;
@@ -254,7 +257,7 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 
-	switch (this->type){
+	switch (this->typeGet()){
 	case pumptype_t::drv8833_dc:
 		this->aIN[0].pin = _pinout[0].pin;
 		this->aIN[0].port = _pinout[0].port;
@@ -287,7 +290,98 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 }
 
 void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed){
-	//TODO: implement this
+
+	if (this->isFault()) this->stateSet(pumpstate_t::fault);
+
+	switch (this->stateGet()){
+	case pumpstate_t::init:
+		this->stop();
+		if (_cmd == pumpcmd_t::stop) cmd_consumed = true;
+		else cmd_consumed = false;
+		break;
+
+	case pumpstate_t::waiting:
+		this->idletimeIncrease(_dt);
+		if(this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
+			if (_cmd == pumpcmd_t::start) this->start();
+			else if (_cmd == pumpcmd_t::reverse) this->reverse();
+			else this->stop();
+			cmd_consumed = true;
+		}
+		break;
+
+	case pumpstate_t::stopped:
+		this->idletimeIncrease(_dt);
+		if (_cmd == pumpcmd_t::start){
+			if (this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
+				this->start();
+				cmd_consumed = true;
+			}
+			else if (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds){
+				this->stateSet(pumpstate_t::waiting);
+			}
+		}
+		else if (_cmd == pumpcmd_t::reverse){
+			if (this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
+				this->reverse();
+				cmd_consumed = true;
+			}
+			else if (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds){
+				this->stateSet(pumpstate_t::waiting);
+			}
+		}
+		break;
+
+	case pumpstate_t::running:
+		this->runtimeIncrease(_dt);
+		if(_cmd == pumpcmd_t::start){
+			cmd_consumed = true;
+		}
+		else if (_cmd == pumpcmd_t::stop){
+			this->stop();
+			cmd_consumed = true;
+		}
+		else if (_cmd == pumpcmd_t::reverse){
+			this->stop();
+			cmd_consumed = false;
+		}
+		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->status.forced == false) this->stop(); //TODO: how to handle force.... commands?
+		break;
+
+	case pumpstate_t::reversing:
+		this->runtimeIncrease(_dt);
+		if(_cmd == pumpcmd_t::reverse){
+			cmd_consumed = true;
+		}
+		else if(_cmd == pumpcmd_t::stop){
+			this->stop();
+			cmd_consumed = true;
+		}
+		else {
+			this->stop();
+			cmd_consumed = false;
+		}
+		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->status.forced == false) this->stop(); //TODO: how to handle force.... commands?
+		break;
+
+	case pumpstate_t::fault:
+		this->idletimeIncrease(_dt);
+		this->stop(); //TODO: or forcestop?
+		if (_cmd == pumpcmd_t::stop) cmd_consumed = true;
+		else cmd_consumed = false;
+		break;
+
+	case pumpstate_t::sleep:
+		this->idletimeIncrease(_dt);
+		this->stop(); //TODO: or forcestop?
+		if (_cmd == pumpcmd_t::stop) cmd_consumed = true;
+		else cmd_consumed = false;
+
+	default:
+		break;
+	}
+
+
 }
 
 bool DRV8833Pump::start(void){
@@ -299,7 +393,7 @@ bool DRV8833Pump::start(void){
 		this->idletimeReset();
 		this->runtimeReset();
 
-		switch (this->type){
+		switch (this->typeGet()){
 		case pumptype_t::drv8833_dc:
 			HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_RESET);
@@ -326,7 +420,7 @@ bool DRV8833Pump::stop(void){
 		this->idletimeReset();
 		this->runtimeReset();
 
-		switch (this->type){
+		switch (this->typeGet()){
 		case pumptype_t::drv8833_dc:
 			HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
@@ -352,7 +446,7 @@ bool DRV8833Pump::reverse(void){
 	this->idletimeReset();
 	this->runtimeReset();
 
-	switch (this->type){
+	switch (this->typeGet()){
 	case pumptype_t::drv8833_dc:
 		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
@@ -376,7 +470,7 @@ bool DRV8833Pump::forcestart(void){
 
 	this->status.forced = true;
 
-	switch (this->type){
+	switch (this->typeGet()){
 	case pumptype_t::drv8833_dc:
 		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_RESET);
@@ -407,7 +501,7 @@ bool DRV8833Pump::forcestop(void){
 
 	this->status.forced = true;
 
-	switch (this->type){
+	switch (this->typeGet()){
 	case pumptype_t::drv8833_dc:
 		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
@@ -439,7 +533,7 @@ bool DRV8833Pump::forcereverse(void){
 
 	this->status.forced = true;
 
-	switch (this->type){
+	switch (this->typeGet()){
 	case pumptype_t::drv8833_dc:
 		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
@@ -477,10 +571,6 @@ void DRV8833Pump::setEnable(void){
 }
 bool DRV8833Pump::isFault(void){
 	return HAL_GPIO_ReadPin(this->fault.port, this->fault.pin) ? true : false;
-}
-
-pumpstate_t& DRV8833Pump::stateGet(void){
-	return this->state;
 }
 
 void DRV8833Pump::stateSet(const pumpstate_t & _state){
