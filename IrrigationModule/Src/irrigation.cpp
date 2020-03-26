@@ -110,6 +110,7 @@ void BinaryPump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_cons
 bool BinaryPump::start(void){
 
 	bool success = false;
+	this->status.forced = false;
 
 	if(this->isRunning() == false){
 
@@ -127,6 +128,7 @@ bool BinaryPump::start(void){
 bool BinaryPump::stop(void){
 
 	bool success = false;
+	this->status.forced = false;
 
 	if(this->isRunning() == true){
 
@@ -389,6 +391,7 @@ void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_con
 bool DRV8833Pump::start(void){
 
 	bool success = false;
+	this->status.forced = false;
 
 	if(this->isRunning() == false){
 		this->stateSet(pumpstate_t::running);
@@ -416,6 +419,7 @@ bool DRV8833Pump::start(void){
 bool DRV8833Pump::stop(void){
 
 	bool success = false;
+	this->status.forced = false;
 
 	if(this->isRunning() == true){
 		this->stateSet(pumpstate_t::stopped);
@@ -443,6 +447,7 @@ bool DRV8833Pump::stop(void){
 bool DRV8833Pump::reverse(void){
 
 	bool success = false;
+	this->status.forced = false;
 
 	this->stateSet(pumpstate_t::reversing);
 	this->idletimeReset();
