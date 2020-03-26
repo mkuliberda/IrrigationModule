@@ -95,12 +95,27 @@ void vIrrigationControlTask( void *pvParameters )
 	const float WLSensorHighPositionMeters = 0.12;
 	const float WLSensorLowPositionMeters = 0.38;
 
-	const struct gpio_s pump1gpio = {PUMP1_GPIO_Port, PUMP1_Pin};
+	const struct gpio_s pump1gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN1_Pin};
+	const struct gpio_s pump1gpio_in2 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN2_Pin};
+	const array<struct gpio_s, 2> pump1gpio = {pump1gpio_in1, pump1gpio_in2};
 	const struct gpio_s pump1led  = {PUMP1LD_GPIO_Port, PUMP1LD_Pin};
-	const struct gpio_s pump2gpio = {PUMP2_GPIO_Port, PUMP2_Pin};
+	const struct gpio_s pump1fault  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_ULT_Pin};
+	const struct gpio_s pump1mode  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_EEP_Pin};
+
+	const struct gpio_s pump2gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP2_IN1_Pin};
+	const struct gpio_s pump2gpio_in2 = {DRV8833PUMPS_GPIO_Port, PUMP2_IN2_Pin};
+	const array<struct gpio_s, 2> pump2gpio = {pump2gpio_in1, pump2gpio_in2};
 	const struct gpio_s pump2led  = {PUMP2LD_GPIO_Port, PUMP2LD_Pin};
-	const struct gpio_s pump3gpio = {PUMP3_GPIO_Port, PUMP3_Pin};
+	const struct gpio_s pump2fault  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_ULT_Pin};
+	const struct gpio_s pump2mode  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_EEP_Pin};
+
+	const struct gpio_s pump3gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP3_IN1_Pin};
+	const struct gpio_s pump3gpio_in2 = {DRV8833PUMPS_GPIO_Port, PUMP3_IN2_Pin};
+	const array<struct gpio_s, 2> pump3gpio = {pump3gpio_in1, pump3gpio_in2};
 	const struct gpio_s pump3led  = {PUMP3LD_GPIO_Port, PUMP3LD_Pin};
+	const struct gpio_s pump3fault  = {DRV8833PUMPS_GPIO_Port, DRV8833_2_ULT_Pin};
+	const struct gpio_s pump3mode  = {DRV8833PUMPS_GPIO_Port, DRV8833_2_EEP_Pin};
+
 	const struct gpio_s ds18b20_1gpio = {DS18B20_1_GPIO_Port, DS18B20_1_Pin};
 
 	const struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
@@ -134,9 +149,11 @@ void vIrrigationControlTask( void *pvParameters )
 	sector1->plantCreate(plant1.name, plant1.id);
 	sector1->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector1->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector1->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		sector1->irrigationController->pBinPump->init(1, 4, 10, pump1gpio, pump1led);
+	if (sector1->irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector1->irrigationController->p8833Pump->init(1, 4, 10, pump1gpio, pump1led, pump1fault, pump1mode);
 	}
+		//sector1->irrigationController->pBinPump->init(1, 4, 10, pump1gpio, pump1led);
+	//}
 
 
 	IrrigationSector *sector2 = new IrrigationSector(2);
@@ -145,18 +162,21 @@ void vIrrigationControlTask( void *pvParameters )
 	sector2->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector2->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		sector2->irrigationController->pBinPump->init(2, 5, 15, pump2gpio, pump2led);
+	if (sector2->irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector2->irrigationController->p8833Pump->init(2, 5, 15, pump2gpio, pump2led, pump2fault, pump2mode);
 	}
+	//	sector2->irrigationController->pBinPump->init(2, 5, 15, pump2gpio, pump2led);
+	//}
 
 
 	IrrigationSector *sector3 = new IrrigationSector(3);
 	sector3->plantCreate(plant4.name, plant4.id);
 	sector3->irrigationController->modeSet(pumpcontrollermode_t::external);
 	sector3->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector3->irrigationController->pumpCreate(pumptype_t::binary) == true){
-		sector3->irrigationController->pBinPump->init(3, 5, 15, pump3gpio, pump3led);
-	}
+	if (sector3->irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector3->irrigationController->p8833Pump->init(3, 7, 18, pump3gpio, pump3led, pump3fault, pump3mode);
+	}//	sector3->irrigationController->pBinPump->init(3, 5, 15, pump3gpio, pump3led);
+	//}
 
 
 	WaterTank *tank1 = new WaterTank(tank1HeightMeters, tank1VolumeLiters);
