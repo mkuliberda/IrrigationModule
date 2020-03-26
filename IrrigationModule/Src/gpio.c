@@ -96,9 +96,6 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(NRF24_CE_GPIO_Port, NRF24_CE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, PUMP1_Pin|PUMP2_Pin|PUMP3_Pin|PUMP4_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(DS18B20_1_GPIO_Port, DS18B20_1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PEPin PEPin PEPin PEPin 
@@ -154,11 +151,19 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(NRF24_CE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PDPin PDPin PDPin PDPin */
-  GPIO_InitStruct.Pin = PUMP1_Pin|PUMP2_Pin|PUMP3_Pin|PUMP4_Pin;
+  GPIO_InitStruct.Pin = PUMP1_IN1_Pin|PUMP1_IN2_Pin|PUMP2_IN1_Pin|PUMP2_IN2_Pin|\
+		  	  	  	  	  PUMP3_IN1_Pin|PUMP3_IN2_Pin|PUMP4_IN1_Pin|PUMP4_IN2_Pin|\
+						  DRV8833_1_EEP_Pin|DRV8833_2_EEP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+  HAL_GPIO_Init(DRV8833PUMPS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PDPin PDPin PDPin PDPin */
+  GPIO_InitStruct.Pin = DRV8833_1_ULT_Pin|DRV8833_2_ULT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(DRV8833PUMPS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PCPin PCPin */
   GPIO_InitStruct.Pin = T1_WATER_LVL_H_Pin|T1_WATER_LVL_L_Pin;

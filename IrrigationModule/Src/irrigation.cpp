@@ -194,18 +194,18 @@ double& BinaryPump::idletimeGetSeconds(void){
 /************************************/
 
 bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-		const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led, \
-		const struct gpio_s & _fault, const struct gpio_s & _mode){
+		const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led_pinout, \
+		const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout){
 
 	bool success = true;
 
 	this->status.id = _id;
-	this->fault.pin = _fault.pin;
-	this->fault.port = _fault.port;
-	this->mode.pin = _mode.pin;
-	this->mode.port = _mode.port;
-	this->led.pin = _led.pin;
-	this->led.port = _led.port;
+	this->fault.pin = _fault_pinout.pin;
+	this->fault.port = _fault_pinout.port;
+	this->mode.pin = _mode_pinout.pin;
+	this->mode.port = _mode_pinout.port;
+	this->led.pin = _led_pinout.pin;
+	this->led.port = _led_pinout.port;
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 
@@ -230,8 +230,8 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 
 	this->setEnable();
 
-	if (HAL_GPIO_ReadPin(this->fault.port, this->fault.pin)){
-		this->stop();
+	if (this->isFault() == false){
+		//TODO:
 	}
 	else{
 		this->stateSet(pumpstate_t::fault);
@@ -242,18 +242,18 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 }
 
 bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-		const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led, \
-		const struct gpio_s & _fault, const struct gpio_s & _mode){
+		const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led_pinout, \
+		const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout){
 
 	bool success = true;
 
 	this->status.id = _id;
-	this->fault.pin = _fault.pin;
-	this->fault.port = _fault.port;
-	this->mode.pin = _mode.pin;
-	this->mode.port = _mode.port;
-	this->led.pin = _led.pin;
-	this->led.port = _led.port;
+	this->fault.pin = _fault_pinout.pin;
+	this->fault.port = _fault_pinout.port;
+	this->mode.pin = _mode_pinout.pin;
+	this->mode.port = _mode_pinout.port;
+	this->led.pin = _led_pinout.pin;
+	this->led.port = _led_pinout.port;
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 
@@ -278,8 +278,10 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 
 	this->setEnable();
 
-	if (HAL_GPIO_ReadPin(this->fault.port, this->fault.pin)){
-		this->stop();
+	if (this->isFault() == false){
+		HAL_GPIO_WritePin(this->aIN[0].port, this->aIN[0].pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->aIN[1].port, this->aIN[1].pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
 	}
 	else{
 		this->stateSet(pumpstate_t::fault);
@@ -291,11 +293,11 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 
 void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed){
 
-	if (this->isFault()) this->stateSet(pumpstate_t::fault);
+	if (this->isFault() == true) this->stateSet(pumpstate_t::fault);
 
 	switch (this->stateGet()){
 	case pumpstate_t::init:
-		this->stop();
+		this->stateSet(pumpstate_t::stopped);
 		if (_cmd == pumpcmd_t::stop) cmd_consumed = true;
 		else cmd_consumed = false;
 		break;
@@ -570,7 +572,7 @@ void DRV8833Pump::setEnable(void){
 	HAL_GPIO_WritePin(this->mode.port, this->mode.pin, GPIO_PIN_SET);
 }
 bool DRV8833Pump::isFault(void){
-	return HAL_GPIO_ReadPin(this->fault.port, this->fault.pin) ? true : false;
+	return HAL_GPIO_ReadPin(this->fault.port, this->fault.pin) == GPIO_PIN_RESET ? true : false;
 }
 
 void DRV8833Pump::stateSet(const pumpstate_t & _state){

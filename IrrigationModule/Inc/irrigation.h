@@ -181,11 +181,11 @@ public:
 	};
 
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-								const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led, \
-								const struct gpio_s & _fault, const struct gpio_s & _mode);
+								const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led_pinout, \
+								const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout);
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-								const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led, \
-								const struct gpio_s & _fault, const struct gpio_s & _mode);
+								const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led_pinout, \
+								const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout);
 	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
 	bool 						forcestart(void);
