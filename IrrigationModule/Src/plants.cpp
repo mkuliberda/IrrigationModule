@@ -58,19 +58,18 @@ uint8_t IrrigationSector::update(const double & _dt, const bool & _activate_wate
 	return 0;
 }
 
-uint8_t IrrigationSector::update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt){
-
-	uint8_t status = 0;
+uint8_t& IrrigationSector::update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt){
 
 	for (uint8_t i=0; i<_raw_adc_values_cnt; i++){
 		this->irrigationController->vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
 		this->vPlants.at(i).moisturePercentSet(this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
 	}
 
-	//get status of pump
-	status = this->irrigationController->update(_dt, _activate_watering);
+	//get status of pump for now, later get overall sector status
+	this->status = this->irrigationController->update(_dt, _activate_watering);
 
-	return status;
+
+	return this->status;
 }
 
 uint8_t& IrrigationSector::plantscountGet(void){
@@ -111,6 +110,10 @@ float IrrigationSector::planthealthGet(const uint32_t & _id){
 	}
 
 	return tempHealth;
+}
+
+uint8_t& IrrigationSector::statusGet(void){
+	return this->status;
 }
 
 

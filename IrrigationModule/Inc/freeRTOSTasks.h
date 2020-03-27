@@ -13,8 +13,12 @@
 #include "cmsis_os.h"
 #include "gpio.h"
 
-#define TASK_FREQ_MULTIPLIER 1000
+#ifdef __cplusplus
+ extern "C" {
+#endif
 
+
+#define TASK_FREQ_MULTIPLIER 1000
 
 void vADCReadTask( void *pvParameters );
 void vLEDFlashTask( void *pvParameters );
@@ -24,5 +28,8 @@ void vStatusNotifyTask( void *pvParameters );
 void vWirelessCommTask( void *pvParameters );
 
 
+#ifdef __cplusplus
+ }
+#endif
 
 #endif /* FREERTOSTASKS_H_ */

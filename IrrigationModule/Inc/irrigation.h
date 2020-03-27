@@ -233,6 +233,7 @@ private:
 	uint8_t								waterlevelSensorsCount;
 	const uint8_t 						temperatureSensorsLimit;
 	uint8_t								temperatureSensorsCount;
+	uint8_t								id;
 
 	void 								waterlevelSet(const contentlevel_t & _waterlevel);
 	contentlevel_t&						waterlevelGet(void);
@@ -242,7 +243,7 @@ private:
 
 public:
 
-	WaterTank(const double & _tankheightMeters, const double & _tankvolumeLiters):
+	WaterTank(const double & _tankheightMeters, const double & _tankvolumeLiters, const uint8_t & _id):
 		mean_watertemperatureCelsius(0.0),
 		waterlevel(contentlevel_t::unknown),
 		waterstate(contentstate_t::unknown),
@@ -251,7 +252,8 @@ public:
 		waterlevelSensorsLimit(10),
 		waterlevelSensorsCount(0),
 		temperatureSensorsLimit(3),
-		temperatureSensorsCount(0)
+		temperatureSensorsCount(0),
+		id(_id)
 	{};
 
 	~WaterTank()
@@ -266,6 +268,7 @@ public:
 	uint8_t		 						waterlevelPercentGet(void);
 	bool 								waterlevelSensorCreate(const waterlevelsensortype_t & _sensortype);
 	bool 								temperatureSensorCreate(const temperaturesensortype_t & _sensortype);
+	uint8_t&							idGet(void);
 
 };
 

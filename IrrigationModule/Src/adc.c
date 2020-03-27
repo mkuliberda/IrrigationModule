@@ -48,8 +48,9 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include "cmsis_os.h"
+#include "main.h"
 #include "adc.h"
-
 #include "gpio.h"
 #include "dma.h"
 
@@ -60,8 +61,8 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 uint16_t ADC1ConvertedValues[9];
-xQueueHandle ADCValuesQueue;
-SemaphoreHandle_t xADCReadingsReadySemaphore = NULL;
+extern xQueueHandle ADCValuesQueue;
+extern SemaphoreHandle_t xADCReadingsReadySemaphore;
 
 /* ADC1 init function */
 void MX_ADC1_Init(void)

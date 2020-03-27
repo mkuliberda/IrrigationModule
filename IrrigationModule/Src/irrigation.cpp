@@ -812,6 +812,10 @@ bool WaterTank::temperatureSensorCreate(const temperaturesensortype_t & _sensort
 	return success;
 }
 
+uint8_t & WaterTank::idGet(void){
+	return this->id;
+}
+
 /***********************************/
 /*! PumpController class implementation */
 /***********************************/

@@ -59,6 +59,15 @@
 /* USER CODE END Includes */
 
 /* Private define ------------------------------------------------------------*/
+#define TANK1STATUS_BUFFER_LENGTH 1
+#define PUMPSSTATUS_BUFFER_LENGTH 1
+#define PLANTSHEALTH_BUFFER_LENGTH 4
+#define SECTORSSTATUS_BUFFER_LENGTH 1
+#define BATTERY_BUFFER_LENGTH 1
+#define ADCVALUES_BUFFER_LENGTH 9
+#define EXTCMDS_BUFFER_LENGTH 10
+#define SYSSTATUS_BUFFER_LENGTH 1
+#define SERVICE_BUFFER_LENGTH 10
 
 #define DRDY_Pin GPIO_PIN_2
 #define DRDY_GPIO_Port GPIOE
@@ -175,6 +184,8 @@
 #define MEMS_INT1_GPIO_Port GPIOE
 #define MEMS_INT2_Pin GPIO_PIN_1
 #define MEMS_INT2_GPIO_Port GPIOE
+
+#define MAX_ENTITIES 4
 
 /* USER CODE BEGIN Private defines */
 
