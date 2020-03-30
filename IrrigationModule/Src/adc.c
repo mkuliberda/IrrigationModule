@@ -61,7 +61,7 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 uint16_t ADC1ConvertedValues[9];
-extern xQueueHandle ADCValuesQueue;
+extern xQueueHandle adcValuesQueue;
 extern SemaphoreHandle_t xADCReadingsReadySemaphore;
 
 /* ADC1 init function */
@@ -328,7 +328,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		while (cnt < ADCVALUES_BUFFER_LENGTH)
 		{
 			// Post the byte.
-			xQueueSendFromISR( ADCValuesQueue, &ADC1ConvertedValues[cnt], &xHigherPriorityTaskWoken );
+			xQueueSendFromISR( adcValuesQueue, &ADC1ConvertedValues[cnt], &xHigherPriorityTaskWoken );
 			cnt++;
 
 		}

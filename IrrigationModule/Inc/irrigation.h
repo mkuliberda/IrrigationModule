@@ -32,6 +32,12 @@ struct pumpstatus_s {
 	bool cmd_consumed = false;
 };
 
+struct tankstatus_s {
+	uint8_t id;
+	uint32_t state;
+};
+
+
 enum class pumpstate_t{
 	init,
 	running,
@@ -104,7 +110,7 @@ class BinaryPump: public Pump{
 private:
 
 	double 						runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
-	double 						idletimeSeconds;					///< current idletime incrementing in stopped and waiting state [seconds]
+	double 						idletimeSeconds;				///< current idletime incrementing in stopped and waiting state [seconds]
 	uint32_t 					runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
 	uint32_t 					idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
 	struct gpio_s 				pinout;

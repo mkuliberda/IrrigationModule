@@ -59,7 +59,7 @@
 /* USER CODE END Includes */
 
 /* Private define ------------------------------------------------------------*/
-#define TANK1STATUS_BUFFER_LENGTH 1
+#define TANKSSTATUS_BUFFER_LENGTH 1
 #define PUMPSSTATUS_BUFFER_LENGTH 1
 #define PLANTSHEALTH_BUFFER_LENGTH 4
 #define SECTORSSTATUS_BUFFER_LENGTH 1
@@ -126,9 +126,9 @@
 #define PUMP3_IN2_Pin GPIO_PIN_13
 #define PUMP4_IN1_Pin GPIO_PIN_14
 #define PUMP4_IN2_Pin GPIO_PIN_15
-#define PUMP2LD_Pin GPIO_PIN_8
+#define PUMP2LD_Pin GPIO_PIN_9
 #define PUMP2LD_GPIO_Port GPIOE
-#define PUMP1LD_Pin GPIO_PIN_9
+#define PUMP1LD_Pin GPIO_PIN_8
 #define PUMP1LD_GPIO_Port GPIOE
 #define PUMP3LD_Pin GPIO_PIN_10
 #define PUMP3LD_GPIO_Port GPIOE

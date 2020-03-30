@@ -21,13 +21,21 @@
 #include <numeric>
 #include <irrigation.h>
 
+
+using namespace std;
+
 struct plant_s{
 	string name;
 	uint32_t id;
 	float health;
 };
 
-using namespace std;
+struct sectorstatus_s {
+	uint8_t id;
+	uint32_t state;
+	string plants;
+};
+
 
 class Plant{
 

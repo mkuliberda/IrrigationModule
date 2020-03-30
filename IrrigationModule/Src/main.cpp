@@ -60,18 +60,19 @@
 #include "freeRTOSTasks.h"
 #include "utilities.h"
 #include "plants.h"
+#include "msg_definitions_irrigation.h"
 
 /* USER CODE BEGIN Includes */
 SemaphoreHandle_t xUserButtonSemaphore = NULL;
 SemaphoreHandle_t xADCReadingsReadySemaphore = NULL;
-xQueueHandle ADCValuesQueue;
-xQueueHandle tank1StatusQueue;
+xQueueHandle adcValuesQueue;
+xQueueHandle tanksStatusQueue;
 xQueueHandle pumpsStatusQueue;
 xQueueHandle sectorsStatusQueue;
 xQueueHandle plantsHealthQueue;
 xQueueHandle batteryStatusQueue;
 xQueueHandle sysStatusQueue;
-xQueueHandle externalCommandsQueue;
+xQueueHandle extCommandsQueue;
 xQueueHandle serviceQueue;
 
 
@@ -131,14 +132,14 @@ int main(void)
   /* USER CODE BEGIN 2 */
   vSemaphoreCreateBinary(xUserButtonSemaphore);
   vSemaphoreCreateBinary(xADCReadingsReadySemaphore);
-  ADCValuesQueue = xQueueCreate(ADCVALUES_BUFFER_LENGTH, sizeof( uint16_t ) );
-  tank1StatusQueue = xQueueCreate(TANK1STATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
+  adcValuesQueue = xQueueCreate(ADCVALUES_BUFFER_LENGTH, sizeof( uint16_t ) );
+  tanksStatusQueue = xQueueCreate(TANKSSTATUS_BUFFER_LENGTH, sizeof( tankstatus_s ) );
   pumpsStatusQueue = xQueueCreate(PUMPSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
   sectorsStatusQueue = xQueueCreate(SECTORSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
   plantsHealthQueue = xQueueCreate(PLANTSHEALTH_BUFFER_LENGTH, sizeof( plant_s ) );
   sysStatusQueue = xQueueCreate(SYSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
   batteryStatusQueue = xQueueCreate(BATTERY_BUFFER_LENGTH, sizeof( uint32_t ) );
-  externalCommandsQueue = xQueueCreate(EXTCMDS_BUFFER_LENGTH, sizeof( extcmd_s) );
+  extCommandsQueue = xQueueCreate(EXTCMDS_BUFFER_LENGTH, sizeof( cmd_s) );
   serviceQueue = xQueueCreate(SERVICE_BUFFER_LENGTH, sizeof( servicecode_s) );
   /* USER CODE END 2 */
 
@@ -147,7 +148,7 @@ int main(void)
   xTaskCreate( vIrrigationControlTask, ( const char * ) "Irrigation Control", configMINIMAL_STACK_SIZE+192, NULL, tskIDLE_PRIORITY+5, NULL );
   xTaskCreate( vStatusNotifyTask, ( const char * ) "Status Notify", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, NULL );
   xTaskCreate( vLEDFlashTask, ( const char * ) "LED", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
-  xTaskCreate( vWirelessCommTask, ( const char * ) "Wireless Communication", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+6, NULL );
+  xTaskCreate( vWirelessCommTask, ( const char * ) "Wireless Communication", configMINIMAL_STACK_SIZE+64, NULL, tskIDLE_PRIORITY+6, NULL );
   xTaskCreate( vUserButtonCheckTask, ( const char * ) "User Button", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+7, NULL );
   xTaskCreate( vADCReadTask, ( const char * ) "ADC", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+5, NULL );
 
