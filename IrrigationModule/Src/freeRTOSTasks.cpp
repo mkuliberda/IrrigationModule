@@ -525,7 +525,7 @@ void vWirelessCommTask( void *pvParameters )
 				radio1->GetPayload(radio1FrameRx.buffer);
 				if (radio1FrameRx.values.start == direction_t::RPiToIRM)
 				{
-					IrrigationMessage32 *inbound_msg = new IrrigationMessage32(direction_t::RPiToIRM);
+					IrrigationMessage *inbound_msg = new IrrigationMessage(direction_t::RPiToIRM);
 					inbound_msg->setBuffer(radio1FrameRx.buffer, PAYLOAD_SIZE);
 					if (inbound_msg->validateCRC() == true){
 						cmd = inbound_msg->decodeCommand();
@@ -538,7 +538,7 @@ void vWirelessCommTask( void *pvParameters )
 
 			if (xQueueReceive( tanksStatusQueue, &tank1_status, 0 ) == pdPASS){
 
-				IrrigationMessage32 *outbound_msg = new IrrigationMessage32(direction_t::IRMToRPi);
+				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
 				outbound_msg->encode(tank1_status);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
@@ -553,7 +553,7 @@ void vWirelessCommTask( void *pvParameters )
 			}
 			else if(xQueueReceive( sectorsStatusQueue, &sectors_status, 0 ) == pdPASS){
 
-				IrrigationMessage32 *outbound_msg = new IrrigationMessage32(direction_t::IRMToRPi);
+				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
 				outbound_msg->encodeGeneric(target_t::Sector, 255, sectors_status);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
@@ -568,7 +568,7 @@ void vWirelessCommTask( void *pvParameters )
 
 			else if(xQueueReceive( pumpsStatusQueue, &pumps_status, 0 ) == pdPASS){
 
-				IrrigationMessage32 *outbound_msg = new IrrigationMessage32(direction_t::IRMToRPi);
+				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
 				outbound_msg->encodeGeneric(target_t::Pump, 255, pumps_status);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
@@ -583,7 +583,7 @@ void vWirelessCommTask( void *pvParameters )
 
 			while(xQueueReceive( plantsHealthQueue, &plant, 0 )){
 
-				IrrigationMessage32 *outbound_msg = new IrrigationMessage32(direction_t::IRMToRPi);
+				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
 				outbound_msg->encode(plant);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
