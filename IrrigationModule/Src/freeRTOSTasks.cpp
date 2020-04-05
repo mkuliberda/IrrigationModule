@@ -23,6 +23,10 @@
 #include "nrf24l01.h"
 #include "msg_definitions_irrigation.h"
 
+
+#define PUMP1_ID 1
+#define PUMP2_ID 2
+#define PUMP3_ID 3
 #define PLANT1_ID 1
 #define PLANT2_ID 2
 #define PLANT3_ID 3
@@ -31,6 +35,7 @@
 #define SECTOR2_ID 2
 #define SECTOR3_ID 3
 #define WATERTANK1_ID 1
+#define AVBL_SECTORS 3
 
 extern SemaphoreHandle_t xUserButtonSemaphore;
 extern SemaphoreHandle_t xADCReadingsReadySemaphore;
@@ -41,9 +46,12 @@ extern xQueueHandle sectorsStatusQueue;
 extern xQueueHandle plantsHealthQueue;
 extern xQueueHandle batteryStatusQueue;
 extern xQueueHandle extCommandsQueue;
+extern xQueueHandle confirmationsQueue;
 extern xQueueHandle sysStatusQueue;
 extern xQueueHandle serviceQueue;
+extern xQueueHandle singleValsQueue;
 
+bool handleConfirmation(IrrigationSector &_sector);
 
 void vADCReadTask( void *pvParameters )
 {
@@ -104,6 +112,9 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr double tank1_volume_liters = 5.0;
 	constexpr float wls_high_pos_meters = 0.12;
 	constexpr float wls_low_pos_meters = 0.38;
+	constexpr uint32_t pump_maxruntime_seconds = 60;
+	constexpr uint32_t pump_breaktime_seconds = 20;
+
 
 	constexpr struct gpio_s pump1gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN1_Pin};
 	constexpr struct gpio_s pump1gpio_in2 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN2_Pin};
@@ -137,49 +148,51 @@ void vIrrigationControlTask( void *pvParameters )
 	struct plant_s plant4 = {"Trawa", PLANT4_ID, 0.0};
 
 	struct servicecode_s errorcode;
+	//struct singlevalue_s single_val;
 
+	struct cmd_s received_commands[EXTCMDS_BUFFER_LENGTH];
 	uint8_t rcvd_cmds_nbr = 0;
 
 	double dt_seconds = xFrequencySeconds/1000.0f;
 
-	struct tankstatus_s tank1_status = {1, 0};
+	struct tankstatus_s tank1_status = {WATERTANK1_ID, 0};
 	uint32_t pumps_status = 0; //8 bits per pump
-	uint32_t sectors_status = 0;
+	uint32_t encoded_sectors_status = 0;
 	uint8_t sector_status[MAX_ENTITIES];
 	bool sector_status_requested[MAX_ENTITIES];
+	bool cmd_confirmation_required[MAX_ENTITIES];
 	uint16_t sector1_adc_value[1] = {1};
 	uint16_t sector2_adc_value[2] = {2,3};
 	uint16_t sector3_adc_value[1] = {4};
 	uint16_t free_adc_value[4] = {5,6,7,8};
 	uint16_t battery_adc_value[1] = {9};
+	bool watertank1_valid = false;
+	IrrigationSector sector[AVBL_SECTORS] = {{SECTOR1_ID}, {SECTOR2_ID}, {SECTOR3_ID}};
 
 
-	IrrigationSector *sector1 = new IrrigationSector(SECTOR1_ID);
-	sector1->plantCreate(plant1.name, plant1.id);
-	sector1->irrigationController->modeSet(pumpcontrollermode_t::external);
-	sector1->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector1->irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
-		sector1->irrigationController->p8833Pump->init(1, 4, 10, pump1gpio, pump1led, pump1fault, pump1mode);
+	sector[0].plantCreate(plant1.name, plant1.id);
+	sector[0].irrigationController->modeSet(pumpcontrollermode_t::external);
+	sector[0].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector[0].irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector[0].irrigationController->p8833Pump->init(PUMP1_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump1gpio, pump1led, pump1fault, pump1mode);
 	}
 
 
-	IrrigationSector *sector2 = new IrrigationSector(SECTOR2_ID);
-	sector2->plantCreate(plant2.name, plant2.id);
-	sector2->plantCreate(plant3.name, plant3.id);
-	sector2->irrigationController->modeSet(pumpcontrollermode_t::external);
-	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	sector2->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector2->irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
-		sector2->irrigationController->p8833Pump->init(2, 5, 15, pump2gpio, pump2led, pump2fault, pump2mode);
+	sector[1].plantCreate(plant2.name, plant2.id);
+	sector[1].plantCreate(plant3.name, plant3.id);
+	sector[1].irrigationController->modeSet(pumpcontrollermode_t::external);
+	sector[1].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	sector[1].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector[1].irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector[1].irrigationController->p8833Pump->init(PUMP2_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump2gpio, pump2led, pump2fault, pump2mode);
 	}
 
 
-	IrrigationSector *sector3 = new IrrigationSector(SECTOR3_ID);
-	sector3->plantCreate(plant4.name, plant4.id);
-	sector3->irrigationController->modeSet(pumpcontrollermode_t::external);
-	sector3->irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector3->irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
-		sector3->irrigationController->p8833Pump->init(3, 7, 18, pump3gpio, pump3led, pump3fault, pump3mode);
+	sector[2].plantCreate(plant4.name, plant4.id);
+	sector[2].irrigationController->modeSet(pumpcontrollermode_t::external);
+	sector[2].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector[2].irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector[2].irrigationController->p8833Pump->init(PUMP3_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump3gpio, pump3led, pump3fault, pump3mode);
 	}
 
 
@@ -193,13 +206,6 @@ void vIrrigationControlTask( void *pvParameters )
 	if (tank1->temperatureSensorCreate(temperaturesensortype_t::ds18b20) == true){
 		tank1->vTemperatureSensors.at(0).init(ds18b20_1gpio, &htim7);
 	}
-
-
-	bool sector1_irrigate = false; //TODO: false
-	bool sector2_irrigate = false; //TODO: false
-	bool sector3_irrigate = false; //TODO: false
-	bool watertank1_valid = false;
-
 
 
     for( ;; )
@@ -246,21 +252,21 @@ void vIrrigationControlTask( void *pvParameters )
 						break;
 					}
 				}
+				sector[0].measurementsSet(sector1_adc_value, 1);
+				sector[1].measurementsSet(sector2_adc_value, 2);
+				sector[2].measurementsSet(sector3_adc_value, 1);
 		   }
     	}
 
 
-		struct cmd_s received_commands[EXTCMDS_BUFFER_LENGTH];
-		struct cmd_s rx;
-    	while (xQueueReceive(extCommandsQueue, &rx, ( TickType_t ) 10)){
-    		received_commands[rcvd_cmds_nbr] = rx;
+    	while (xQueueReceive(extCommandsQueue, &received_commands[rcvd_cmds_nbr], ( TickType_t ) 10)){
     		rcvd_cmds_nbr++;
     	}
 
 
     	for (uint8_t i=0; i < rcvd_cmds_nbr; i++)
     	{
-			if(received_commands[i].cmd == command_t::GetStatus){
+ 			if(received_commands[i].cmd == command_t::GetStatus){
 
 				switch(received_commands[i].target){
 				case target_t::Tank:
@@ -268,37 +274,37 @@ void vIrrigationControlTask( void *pvParameters )
 					break;
 
 				case target_t::Pump:
-				   	pumpStateEncode(sector1->irrigationController->p8833Pump->statusGet(), pumps_status);
-				    pumpStateEncode(sector2->irrigationController->p8833Pump->statusGet(), pumps_status);
-				    pumpStateEncode(sector3->irrigationController->p8833Pump->statusGet(), pumps_status);
+				   	pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), pumps_status);
+				    pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), pumps_status);
+				    pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), pumps_status);
 				    xQueueOverwrite( pumpsStatusQueue, &pumps_status);
 					break;
 
 				case target_t::Plant:
 					if		(received_commands[i].target_id == plant1.id){
-						plant1.health = sector1->planthealthGet(plant1.id);
+						plant1.health = sector[0].planthealthGet(plant1.id);
 						xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
 					}
 					else if	(received_commands[i].target_id == plant2.id){
-						plant2.health = sector2->planthealthGet(plant2.id);
+						plant2.health = sector[1].planthealthGet(plant2.id);
 						xQueueSendToFront(plantsHealthQueue, &plant2.health, ( TickType_t ) 0);
 					}
 					else if	(received_commands[i].target_id == plant3.id){
-						plant3.health = sector2->planthealthGet(plant3.id);
+						plant3.health = sector[1].planthealthGet(plant3.id);
 						xQueueSendToFront(plantsHealthQueue, &plant3.health, ( TickType_t ) 0);
 					}
 					else if	(received_commands[i].target_id == plant4.id){
-						plant4.health = sector3->planthealthGet(plant4.id);
+						plant4.health = sector[2].planthealthGet(plant4.id);
 						xQueueSendToFront(plantsHealthQueue, &plant4.health, ( TickType_t ) 0);
 					}
 					else if (received_commands[i].target_id == 255){
-						plant1.health = sector1->planthealthGet(plant1.id);
+						plant1.health = sector[0].planthealthGet(plant1.id);
 						xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
-						plant2.health = sector2->planthealthGet(plant2.id);
+						plant2.health = sector[1].planthealthGet(plant2.id);
 						xQueueSendToFront(plantsHealthQueue, &plant2.health, ( TickType_t ) 0);
-						plant3.health = sector2->planthealthGet(plant3.id);
+						plant3.health = sector[1].planthealthGet(plant3.id);
 						xQueueSendToFront(plantsHealthQueue, &plant3.health, ( TickType_t ) 0);
-						plant4.health = sector3->planthealthGet(plant4.id);
+						plant4.health = sector[2].planthealthGet(plant4.id);
 						xQueueSendToFront(plantsHealthQueue, &plant4.health, ( TickType_t ) 0);
 					}
 					break;
@@ -310,13 +316,13 @@ void vIrrigationControlTask( void *pvParameters )
 					break;
 
 				case target_t::Sector:
-					if		(received_commands[i].target_id == sector1->sectorGet()){
+					if		(received_commands[i].target_id == sector[0].sectorGet()){
 						sector_status_requested[0] = true;
 					}
-					else if	(received_commands[i].target_id == sector2->sectorGet()){
+					else if	(received_commands[i].target_id == sector[1].sectorGet()){
 						sector_status_requested[1] = true;
 					}
-					else if	(received_commands[i].target_id == sector3->sectorGet()){
+					else if	(received_commands[i].target_id == sector[2].sectorGet()){
 						sector_status_requested[2] = true;
 					}
 					else if	(received_commands[i].target_id == 255){
@@ -328,6 +334,20 @@ void vIrrigationControlTask( void *pvParameters )
 
 				case target_t::All:
 					xQueueOverwrite( tanksStatusQueue, &tank1_status); //TODO: implement this, for test now
+					plant1.health = sector[0].planthealthGet(plant1.id);
+					xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
+					plant2.health = sector[1].planthealthGet(plant2.id);
+					xQueueSendToFront(plantsHealthQueue, &plant2.health, ( TickType_t ) 0);
+					plant3.health = sector[1].planthealthGet(plant3.id);
+					xQueueSendToFront(plantsHealthQueue, &plant3.health, ( TickType_t ) 0);
+					plant4.health = sector[2].planthealthGet(plant4.id);
+					xQueueSendToFront(plantsHealthQueue, &plant4.health, ( TickType_t ) 0);
+				   	pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), pumps_status);
+				    pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), pumps_status);
+				    pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), pumps_status);
+					sector_status_requested[0] = true;
+					sector_status_requested[1] = true;
+					sector_status_requested[2] = true;
 					HAL_GPIO_TogglePin(LD8_GPIO_Port, LD8_Pin);
 					break;
 
@@ -341,18 +361,27 @@ void vIrrigationControlTask( void *pvParameters )
 
 					switch (received_commands[i].target_id){
 					case 1:
-						if (watertank1_valid) sector1_irrigate = true;
-						else sector1_irrigate = false;
+						if (watertank1_valid){
+							sector[0].wateringSet(true);
+							cmd_confirmation_required[0] = true;
+						}
+						else sector[0].wateringSet(false);
 						break;
 
 					case 2:
-						if (watertank1_valid) sector2_irrigate = true;
-						else sector2_irrigate = false;
+						if (watertank1_valid){
+							sector[1].wateringSet(true);
+							cmd_confirmation_required[1] = true;
+						}
+						else sector[1].wateringSet(false);
 						break;
 
 					case 3:
-						if (watertank1_valid) sector3_irrigate = true;
-						else sector3_irrigate = false;
+						if (watertank1_valid){
+							sector[2].wateringSet(true);
+							cmd_confirmation_required[2] = true;
+						}
+						else sector[2].wateringSet(false);
 						break;
 
 					default:
@@ -366,15 +395,18 @@ void vIrrigationControlTask( void *pvParameters )
 
 					switch (received_commands[i].target_id){
 					case 1:
-						sector1_irrigate = false;
+						sector[0].wateringSet(false);
+						cmd_confirmation_required[0] = true;
 						break;
 
 					case 2:
-						sector2_irrigate = false;
+						sector[1].wateringSet(false);
+						cmd_confirmation_required[1] = true;
 						break;
 
 					case 3:
-						sector3_irrigate = false;
+						sector[2].wateringSet(false);
+						cmd_confirmation_required[2] = true;
 						break;
 
 					default:
@@ -385,14 +417,18 @@ void vIrrigationControlTask( void *pvParameters )
 
     	}
 
-    	sector_status[0] = sector1->update(dt_seconds, sector1_irrigate, sector1_adc_value, 1);
-    	sector_status[1] = sector2->update(dt_seconds, sector2_irrigate, sector2_adc_value, 2);
-    	sector_status[2] = sector3->update(dt_seconds, sector3_irrigate, sector3_adc_value, 1);
-    	sectors_status = sector_status[3]<<24 | sector_status[2]<<16 | sector_status[1]<<8 | sector_status[0];
+
+    	for (uint8_t i=0; i<AVBL_SECTORS; ++i){
+        	sector_status[i] = sector[i].update(dt_seconds);					//updte avbl sectors
+    		if (cmd_confirmation_required[i] == true){
+    			cmd_confirmation_required[i] = handleConfirmation(sector[i]); 	//reset request flag on success
+    		}
+    	}
 
 
     	if (sector_status_requested[0] or sector_status_requested[1] or sector_status_requested[2] or sector_status_requested[3]){
-    		xQueueOverwrite(sectorsStatusQueue, &sectors_status);
+    		encoded_sectors_status = sector_status[3]<<24 | sector_status[2]<<16 | sector_status[1]<<8 | sector_status[0];
+    		xQueueOverwrite(sectorsStatusQueue, &encoded_sectors_status);
     		sector_status_requested[0] = false;
     		sector_status_requested[1] = false;
     		sector_status_requested[2] = false;
@@ -400,11 +436,13 @@ void vIrrigationControlTask( void *pvParameters )
     	}
 
 
+
     	if(xUserButtonSemaphore != NULL){
 		   if (xSemaphoreTake(xUserButtonSemaphore, (portTickType)2) == pdTRUE){
+			   encoded_sectors_status = sector_status[3]<<24 | sector_status[2]<<16 | sector_status[1]<<8 | sector_status[0];
 			   errorcode.reporter = target_t::Sector;
 			   errorcode.id = 255;
-			   errorcode.code = sectors_status;
+			   errorcode.code = encoded_sectors_status;
 			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
 
 			   errorcode.reporter = target_t::Tank;
@@ -412,9 +450,9 @@ void vIrrigationControlTask( void *pvParameters )
 			   errorcode.code = tank1_status.state;
 			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
 
-			   pumpStateEncode(sector1->irrigationController->p8833Pump->statusGet(), pumps_status);
-			   pumpStateEncode(sector2->irrigationController->p8833Pump->statusGet(), pumps_status);
-			   pumpStateEncode(sector3->irrigationController->p8833Pump->statusGet(), pumps_status);
+			   pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), pumps_status);
+			   pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), pumps_status);
+			   pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), pumps_status);
 			   errorcode.reporter = target_t::Pump;
 			   errorcode.id = 255;
 			   errorcode.code = pumps_status;
@@ -438,7 +476,6 @@ void vIrrigationControlTask( void *pvParameters )
 		vTaskDelayUntil(&xLastWakeTime, xFrequencySeconds);
     }
 
-    delete sector1; delete sector2; delete sector3;
     delete tank1;
 
 }
@@ -471,15 +508,13 @@ void vWirelessCommTask( void *pvParameters )
 
 	dlframe32byte_u radio1FrameRx;
 	struct cmd_s cmd;
+	struct confirmation_s confirmation;
 	bool radio1_configured = false;
 	tankstatus_s tank1_status;
 	uint32_t pumps_status = 0;
-	uint32_t sectors_status = 0;
+	uint32_t encoded_sectors_status = 0;
 	struct plant_s plant;
 
-	//-------------------------
-
-	//radio1FrameTx.values.start = direction_t::IRMToRPi;
 
 	/* Receiver address */
 	uint8_t TxAddress[] = {
@@ -504,7 +539,7 @@ void vWirelessCommTask( void *pvParameters )
 	NRF24L01 *radio1 = new NRF24L01();
 
 	/* Initialize NRF24L01+ on channel 15 and 32bytes of payload */
-	/* By default 2Mbps data rate and 0dBm output power */
+	/* By default 2Mbps data rate and -6dBm output power */
 	/* NRF24L01 goes to RX mode by default */
 	radio1->Init(&hspi2,radio1ce, radio1csn);
 	radio1_configured = radio1->Config(PAYLOAD_SIZE, 15, NRF24L01_OutputPower_M6dBm, NRF24L01_DataRate_2M);
@@ -536,6 +571,22 @@ void vWirelessCommTask( void *pvParameters )
 				}
 			}
 
+			while(xQueueReceive( confirmationsQueue, &confirmation, 0 )){
+
+				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::RPiToIRM);
+				outbound_msg->encode(confirmation);
+				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
+
+				/* Wait for data to be sent */
+				do {
+					/* Wait till sending */
+					transmissionStatus = radio1->GetTransmissionStatus();
+				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
+
+				delete outbound_msg;
+
+			}
+
 			if (xQueueReceive( tanksStatusQueue, &tank1_status, 0 ) == pdPASS){
 
 				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
@@ -551,10 +602,10 @@ void vWirelessCommTask( void *pvParameters )
 				delete outbound_msg;
 
 			}
-			else if(xQueueReceive( sectorsStatusQueue, &sectors_status, 0 ) == pdPASS){
+			if(xQueueReceive( sectorsStatusQueue, &encoded_sectors_status, 0 ) == pdPASS){
 
 				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
-				outbound_msg->encodeGeneric(target_t::Sector, 255, sectors_status);
+				outbound_msg->encodeGeneric(target_t::Sector, 255, encoded_sectors_status);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
 				/* Wait for data to be sent */
@@ -566,7 +617,7 @@ void vWirelessCommTask( void *pvParameters )
 				delete outbound_msg;
 			}
 
-			else if(xQueueReceive( pumpsStatusQueue, &pumps_status, 0 ) == pdPASS){
+			if(xQueueReceive( pumpsStatusQueue, &pumps_status, 0 ) == pdPASS){
 
 				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
 				outbound_msg->encodeGeneric(target_t::Pump, 255, pumps_status);
@@ -607,6 +658,29 @@ void vWirelessCommTask( void *pvParameters )
     }
 
     delete radio1;
+
+}
+
+bool handleConfirmation(IrrigationSector &_sector){
+
+	struct confirmation_s confirmation = {target_t::Sector, 0, command_t::None, 0, 0, false};
+	bool not_confirmed = true;
+
+	if (_sector.wateringGet() == true and (_sector.pumpstateGet() == pumpstate_t::running or _sector.pumpstateGet() == pumpstate_t::waiting)){
+		confirmation.target_id = _sector.sectorGet();
+		confirmation.cmd = command_t::Start;
+		confirmation.consumed = true;
+		not_confirmed = xQueueSendToFront(confirmationsQueue, &confirmation, ( TickType_t ) 0) == pdTRUE ? false : true;
+
+	}
+	if (_sector.wateringGet() == false and _sector.pumpstateGet() == pumpstate_t::stopped){
+		confirmation.target_id = _sector.sectorGet();
+		confirmation.cmd = command_t::Stop;
+		confirmation.consumed = true;
+		not_confirmed = xQueueSendToFront(confirmationsQueue, &confirmation, ( TickType_t ) 0) == pdTRUE ? false : true;
+	}
+
+	return not_confirmed;
 
 }
 

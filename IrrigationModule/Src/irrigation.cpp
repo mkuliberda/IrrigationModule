@@ -33,6 +33,30 @@ pumptype_t& Pump::typeGet(void){
 	return this->type;
 }
 
+void Pump::runtimeReset(void){
+	this->runtimeSeconds = 0.0;
+}
+
+void Pump::runtimeIncrease(const double & _dt){
+	this->runtimeSeconds += _dt;
+}
+
+double& Pump::runtimeGetSeconds(void){
+	return this->runtimeSeconds;
+}
+
+void Pump::idletimeReset(void){
+	this->idletimeSeconds = 0.0;
+}
+
+void Pump::idletimeIncrease(const double & _dt){
+	this->idletimeSeconds += _dt;
+}
+
+double& Pump::idletimeGetSeconds(void){
+	return this->idletimeSeconds;
+}
+
 
 
 /************************************/
@@ -46,6 +70,7 @@ bool BinaryPump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSec
 	this->led.pin = _led.pin;
 	this->led.port = _led.port;
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
+	this->idletimeSeconds = this->idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 	HAL_GPIO_WritePin(this->pinout.port,this->pinout.pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(this->led.port, this->led.pin, GPIO_PIN_RESET);
@@ -167,29 +192,6 @@ void BinaryPump::stateSet(const pumpstate_t & _state){
 	this->status.state = static_cast<uint32_t>(_state);
 }
 
-void BinaryPump::runtimeReset(void){
-	this->runtimeSeconds = 0.0;
-}
-
-void BinaryPump::runtimeIncrease(const double & _dt){
-	this->runtimeSeconds += _dt;
-}
-
-double& BinaryPump::runtimeGetSeconds(void){
-	return this->runtimeSeconds;
-}
-
-void BinaryPump::idletimeReset(void){
-	this->idletimeSeconds = 0.0;
-}
-
-void BinaryPump::idletimeIncrease(const double & _dt){
-	this->idletimeSeconds += _dt;
-}
-
-double& BinaryPump::idletimeGetSeconds(void){
-	return this->idletimeSeconds;
-}
 
 /************************************/
 /*! DRV8833Pump class implementation */
@@ -209,6 +211,7 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	this->led.pin = _led_pinout.pin;
 	this->led.port = _led_pinout.port;
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
+	this->idletimeSeconds = this->idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 
 	switch (this->typeGet()){
@@ -257,6 +260,7 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	this->led.pin = _led_pinout.pin;
 	this->led.port = _led_pinout.port;
 	this->idletimeRequiredSeconds = _idletimeRequiredSeconds;
+	this->idletimeSeconds = this->idletimeRequiredSeconds;
 	this->runtimeLimitSeconds = _runtimeLimitSeconds;
 
 	switch (this->typeGet()){
@@ -583,30 +587,6 @@ bool DRV8833Pump::isFault(void){
 void DRV8833Pump::stateSet(const pumpstate_t & _state){
 	this->state = _state;
 	this->status.state = static_cast<uint32_t>(_state);
-}
-
-void DRV8833Pump::runtimeReset(void){
-	this->runtimeSeconds = 0.0;
-}
-
-void DRV8833Pump::runtimeIncrease(const double & _dt){
-	this->runtimeSeconds += _dt;
-}
-
-double& DRV8833Pump::runtimeGetSeconds(void){
-	return this->runtimeSeconds;
-}
-
-void DRV8833Pump::idletimeReset(void){
-	this->idletimeSeconds = 0.0;
-}
-
-void DRV8833Pump::idletimeIncrease(const double & _dt){
-	this->idletimeSeconds += _dt;
-}
-
-double& DRV8833Pump::idletimeGetSeconds(void){
-	return this->idletimeSeconds;
 }
 
 /***********************************/

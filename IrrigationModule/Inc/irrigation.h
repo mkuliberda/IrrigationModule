@@ -85,6 +85,10 @@ protected:
 	pumpstate_t 				state = pumpstate_t::init;		///< current pump's working state based on enum pumpstate_t
 	struct pumpstatus_s 		status;
 
+	double 						runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
+	double 						idletimeSeconds;				///< current idletime incrementing in stopped and waiting state [seconds]
+	uint32_t 					runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
+	uint32_t 					idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
 
 	virtual bool 				start() = 0;
 	virtual bool 				stop() = 0;
@@ -92,7 +96,12 @@ protected:
 
 public:
 
-	Pump(){};
+	Pump():
+		runtimeSeconds(0.0),
+		idletimeSeconds(0.0),
+		runtimeLimitSeconds(0),
+		idletimeRequiredSeconds(0)
+	{};
 
 	virtual ~Pump(){};
 
@@ -103,25 +112,21 @@ public:
 	virtual bool 				isRunning(void);
 	struct pumpstatus_s&		statusGet(void);
 
+	void 						runtimeReset(void);
+	void 						runtimeIncrease(const double & _dt);
+	double&						runtimeGetSeconds(void);
+	void 						idletimeReset(void);
+	void 						idletimeIncrease(const double & _dt);
+	double& 					idletimeGetSeconds(void);
+
 };
 
 class BinaryPump: public Pump{
 
 private:
 
-	double 						runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
-	double 						idletimeSeconds;				///< current idletime incrementing in stopped and waiting state [seconds]
-	uint32_t 					runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
-	uint32_t 					idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
 	struct gpio_s 				pinout;
 	struct gpio_s 				led;
-
-	void 						runtimeReset(void);
-	void 						runtimeIncrease(const double & _dt);
-	double& 					runtimeGetSeconds(void);
-	void 						idletimeReset(void);
-	void 						idletimeIncrease(const double & _dt);
-	double& 					idletimeGetSeconds(void);
 
 protected:
 
@@ -130,11 +135,7 @@ protected:
 
 public:
 
-	BinaryPump():
-	runtimeSeconds(0.0),
-	idletimeSeconds(0.0),
-	runtimeLimitSeconds(0),
-	idletimeRequiredSeconds(0)
+	BinaryPump()
 	{
 		this->type=pumptype_t::binary;
 	};
@@ -151,21 +152,10 @@ class DRV8833Pump: public Pump{
 
 private:
 
-	double 						runtimeSeconds;					///< current runtime, incrementing in running state [seconds]
-	double 						idletimeSeconds;				///< current idletime incrementing in stopped and waiting state [seconds]
-	uint32_t 					runtimeLimitSeconds;			///< runtime limit for particular pump [seconds]
-	uint32_t 					idletimeRequiredSeconds; 		///< idletime required between two consecutive runs [seconds]
 	array<struct gpio_s, 4> 	aIN;							///< in1, in2, in3, in4
 	struct gpio_s 				led;
 	struct gpio_s 				fault;
 	struct gpio_s 				mode;
-
-	void 						runtimeReset(void);
-	void 						runtimeIncrease(const double & _dt);
-	double&						runtimeGetSeconds(void);
-	void 						idletimeReset(void);
-	void 						idletimeIncrease(const double & _dt);
-	double& 					idletimeGetSeconds(void);
 
 protected:
 
@@ -176,11 +166,7 @@ protected:
 
 public:
 
-	DRV8833Pump(const motortype_t & _type):
-	runtimeSeconds(0.0),
-	idletimeSeconds(0.0),
-	runtimeLimitSeconds(0),
-	idletimeRequiredSeconds(0)
+	DRV8833Pump(const motortype_t & _type)
 	{
 		if (_type == motortype_t::bldc_motor) this->type = pumptype_t::drv8833_bldc;
 		if (_type == motortype_t::dc_motor) this->type = pumptype_t::drv8833_dc;

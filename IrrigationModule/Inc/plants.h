@@ -72,6 +72,7 @@ private:
 	uint8_t 		plantsCount;
 	vector<Plant> 	vPlants;
 	uint8_t 		status;
+	bool			water_plants;
 
 public:
 
@@ -80,7 +81,8 @@ public:
 	IrrigationSector(const uint8_t & _sector):
 	sector(_sector),
 	plantsCount(0),
-	status(0)
+	status(0),
+	water_plants(false)
 	{
 		irrigationController = new PumpController();
 	};
@@ -89,14 +91,20 @@ public:
 		delete irrigationController;
 	}
 
-	const uint8_t& sectorGet(void);
-	bool plantCreate(const string & _name, const uint32_t & _id);
-	uint8_t update(const double & _dt, const bool & _activate_watering);
-	uint8_t& update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt);
-	uint8_t& plantscountGet(void);
-	float planthealthGet(const string & _name);
-	float planthealthGet(const uint32_t & _id);
-	uint8_t& statusGet(void);
+	const uint8_t& 			sectorGet(void);
+	bool 					plantCreate(const string & _name, const uint32_t & _id);
+	uint8_t& 				update(const double & _dt);
+	uint8_t& 				update(const double & _dt, const bool & _activate_watering);
+	uint8_t& 				update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt);
+	uint8_t& 				plantscountGet(void);
+	float 					planthealthGet(const string & _name);
+	float 					planthealthGet(const uint32_t & _id);
+	void					measurementsSet(uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt);
+	uint8_t& 				statusGet(void);
+	pumpstate_t 			pumpstateGet(void);
+//	struct pumpstatus_s&	pumpstatusGet(void); TODO
+	void					wateringSet(const bool & _activate_watering);
+	bool&					wateringGet(void);
 };
 
 #endif /* PLANTS_H_ */
