@@ -24,17 +24,17 @@
 #include "msg_definitions_irrigation.h"
 
 
-#define PUMP1_ID 1
-#define PUMP2_ID 2
-#define PUMP3_ID 3
-#define PLANT1_ID 1
-#define PLANT2_ID 2
-#define PLANT3_ID 3
-#define PLANT4_ID 4
-#define SECTOR1_ID 1
-#define SECTOR2_ID 2
-#define SECTOR3_ID 3
-#define WATERTANK1_ID 1
+#define PUMP1_ID 0
+#define PUMP2_ID 1
+#define PUMP3_ID 2
+#define PLANT1_ID 0
+#define PLANT2_ID 1
+#define PLANT3_ID 2
+#define PLANT4_ID 3
+#define SECTOR1_ID 0
+#define SECTOR2_ID 1
+#define SECTOR3_ID 2
+#define WATERTANK1_ID 0
 #define AVBL_SECTORS 3
 
 extern SemaphoreHandle_t xUserButtonSemaphore;
@@ -78,7 +78,7 @@ void vLEDFlashTask( void *pvParameters )
 
     for( ;; )
     {
-    	LEDToggle(10);
+		HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET);
     	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 }
@@ -93,7 +93,7 @@ void vUserButtonCheckTask(void *pvParameters )
     {
     	if (UserButtonRead() == 1)
     	{
-    		HAL_GPIO_WritePin(LD8_GPIO_Port, LD8_Pin, GPIO_PIN_SET);
+    		HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET);
     		xSemaphoreGive(xUserButtonSemaphore);
     	}
     	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
@@ -333,7 +333,7 @@ void vIrrigationControlTask( void *pvParameters )
 					break;
 
 				case target_t::All:
-					xQueueOverwrite( tanksStatusQueue, &tank1_status); //TODO: implement this, for test now
+					/*xQueueOverwrite( tanksStatusQueue, &tank1_status); //TODO: implement this, for test now
 					plant1.health = sector[0].planthealthGet(plant1.id);
 					xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
 					plant2.health = sector[1].planthealthGet(plant2.id);
@@ -347,8 +347,8 @@ void vIrrigationControlTask( void *pvParameters )
 				    pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), pumps_status);
 					sector_status_requested[0] = true;
 					sector_status_requested[1] = true;
-					sector_status_requested[2] = true;
-					HAL_GPIO_TogglePin(LD8_GPIO_Port, LD8_Pin);
+					sector_status_requested[2] = true;*/
+					HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET);
 					break;
 
 				default:
@@ -360,7 +360,7 @@ void vIrrigationControlTask( void *pvParameters )
 				if (received_commands[i].target == target_t::Sector){
 
 					switch (received_commands[i].target_id){
-					case 1:
+					case SECTOR1_ID:
 						if (watertank1_valid){
 							sector[0].wateringSet(true);
 							cmd_confirmation_required[0] = true;
@@ -368,7 +368,7 @@ void vIrrigationControlTask( void *pvParameters )
 						else sector[0].wateringSet(false);
 						break;
 
-					case 2:
+					case SECTOR2_ID:
 						if (watertank1_valid){
 							sector[1].wateringSet(true);
 							cmd_confirmation_required[1] = true;
@@ -376,7 +376,7 @@ void vIrrigationControlTask( void *pvParameters )
 						else sector[1].wateringSet(false);
 						break;
 
-					case 3:
+					case SECTOR3_ID:
 						if (watertank1_valid){
 							sector[2].wateringSet(true);
 							cmd_confirmation_required[2] = true;
@@ -394,17 +394,17 @@ void vIrrigationControlTask( void *pvParameters )
 				if (received_commands[i].target == target_t::Sector){
 
 					switch (received_commands[i].target_id){
-					case 1:
+					case SECTOR1_ID:
 						sector[0].wateringSet(false);
 						cmd_confirmation_required[0] = true;
 						break;
 
-					case 2:
+					case SECTOR2_ID:
 						sector[1].wateringSet(false);
 						cmd_confirmation_required[1] = true;
 						break;
 
-					case 3:
+					case SECTOR3_ID:
 						sector[2].wateringSet(false);
 						cmd_confirmation_required[2] = true;
 						break;
@@ -419,7 +419,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 
     	for (uint8_t i=0; i<AVBL_SECTORS; ++i){
-        	sector_status[i] = sector[i].update(dt_seconds);					//updte avbl sectors
+        	sector_status[i] = sector[i].update(dt_seconds);					//update avbl sectors
     		if (cmd_confirmation_required[i] == true){
     			cmd_confirmation_required[i] = handleConfirmation(sector[i]); 	//reset request flag on success
     		}
@@ -472,7 +472,7 @@ void vIrrigationControlTask( void *pvParameters )
     	}
 
 
-    	LEDToggle(6);
+    	LEDToggle(10);
 		vTaskDelayUntil(&xLastWakeTime, xFrequencySeconds);
     }
 
@@ -490,7 +490,7 @@ void vStatusNotifyTask( void *pvParameters )
     {
 		while (xQueueReceive(serviceQueue, &rx.servicecode, ( TickType_t ) 10)){
 			HAL_UART_Transmit(&huart4, rx.buffer, 6, 10);
-			HAL_GPIO_WritePin(LD8_GPIO_Port, LD8_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET);
 		}
 
         vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
@@ -542,13 +542,19 @@ void vWirelessCommTask( void *pvParameters )
 	/* By default 2Mbps data rate and -6dBm output power */
 	/* NRF24L01 goes to RX mode by default */
 	radio1->Init(&hspi2,radio1ce, radio1csn);
-	radio1_configured = radio1->Config(PAYLOAD_SIZE, 15, NRF24L01_OutputPower_M6dBm, NRF24L01_DataRate_2M);
+	while(radio1->Config(PAYLOAD_SIZE, 15, NRF24L01_OutputPower_M6dBm, NRF24L01_DataRate_1M) == false){
+		vTaskDelay(500);
+	}
+	radio1_configured = true;
 
 	/* Set my address, 5 bytes */
 	radio1->SetMyAddress(MyAddress);
 
 	/* Set TX address, 5 bytes */
 	radio1->SetTxAddress(TxAddress);
+
+	/* Go back to RX mode */
+	radio1->PowerUpRx();
 
     for( ;; )
     {
@@ -571,22 +577,6 @@ void vWirelessCommTask( void *pvParameters )
 				}
 			}
 
-			while(xQueueReceive( confirmationsQueue, &confirmation, 0 )){
-
-				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::RPiToIRM);
-				outbound_msg->encode(confirmation);
-				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
-
-				/* Wait for data to be sent */
-				do {
-					/* Wait till sending */
-					transmissionStatus = radio1->GetTransmissionStatus();
-				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
-
-				delete outbound_msg;
-
-			}
-
 			if (xQueueReceive( tanksStatusQueue, &tank1_status, 0 ) == pdPASS){
 
 				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
@@ -600,6 +590,8 @@ void vWirelessCommTask( void *pvParameters )
 				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
 
 				delete outbound_msg;
+				/* Go back to RX mode */
+				radio1->PowerUpRx();
 
 			}
 			if(xQueueReceive( sectorsStatusQueue, &encoded_sectors_status, 0 ) == pdPASS){
@@ -615,6 +607,8 @@ void vWirelessCommTask( void *pvParameters )
 				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
 
 				delete outbound_msg;
+				/* Go back to RX mode */
+				radio1->PowerUpRx();
 			}
 
 			if(xQueueReceive( pumpsStatusQueue, &pumps_status, 0 ) == pdPASS){
@@ -630,6 +624,8 @@ void vWirelessCommTask( void *pvParameters )
 				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
 
 				delete outbound_msg;
+				/* Go back to RX mode */
+				radio1->PowerUpRx();
 			}
 
 			while(xQueueReceive( plantsHealthQueue, &plant, 0 )){
@@ -645,15 +641,33 @@ void vWirelessCommTask( void *pvParameters )
 				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
 
 				delete outbound_msg;
+				/* Go back to RX mode */
+				radio1->PowerUpRx();
 
 			}
 
-			/* Go back to RX mode */
-			radio1->PowerUpRx();
+			while(xQueueReceive( confirmationsQueue, &confirmation, 0 )){
+
+				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::RPiToIRM);
+				outbound_msg->encode(confirmation);
+				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
+
+				/* Wait for data to be sent */
+				do {
+					/* Wait till sending */
+					transmissionStatus = radio1->GetTransmissionStatus();
+				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
+
+				delete outbound_msg;
+				/* Go back to RX mode */
+				radio1->PowerUpRx();
+
+			}
+
 
     	}
 
-    	LEDToggle(7);
+    	LEDToggle(8);
     	vTaskDelayUntil(&xLastWakeTime,xFrequencySeconds);
     }
 
