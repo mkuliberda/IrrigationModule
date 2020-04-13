@@ -14,11 +14,11 @@ float& Plant::moisturePercentGet(void){
 	return this->soilMoisture;
 }
 
-string& Plant::nameGet(void){
+std::string& Plant::nameGet(void){
 	return this->name;
 }
 
-void Plant::nameChange(const string & _new_name){
+void Plant::nameChange(const std::string & _new_name){
 	this->name.assign(_new_name);
 }
 
@@ -35,7 +35,7 @@ const uint8_t& IrrigationSector:: sectorGet(void){
 	return this->sector;
 }
 
-bool IrrigationSector::plantCreate(const string & _name, const uint32_t & _id){
+bool IrrigationSector::plantCreate(const std::string & _name, const uint32_t & _id){
 
 	bool success = true;
 
@@ -82,7 +82,7 @@ uint8_t& IrrigationSector::plantscountGet(void){
 	return this->plantsCount;
 }
 
-float IrrigationSector::planthealthGet(const string & _name){
+float IrrigationSector::planthealthGet(const std::string & _name){
 
 	float tempHealth = -1000.0;
 

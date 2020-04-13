@@ -198,7 +198,7 @@ void BinaryPump::stateSet(const pumpstate_t & _state){
 /************************************/
 
 bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-		const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led_pinout, \
+		const std::array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led_pinout, \
 		const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout){
 
 	bool success = true;
@@ -247,7 +247,7 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 }
 
 bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-		const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led_pinout, \
+		const std::array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led_pinout, \
 		const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout){
 
 	bool success = true;
@@ -644,12 +644,12 @@ bool WaterTank::checkStateOK(const double & _dt, uint32_t & errcodeBitmask){
 	uint8_t waterlevelPercent = 0;
 	bool isOK = true;
 	bool tempReadingValid = false;
-	bitset<32> errcode; errcode.set();  //initialize bitset and set all bits to 1
+	std::bitset<32> errcode; errcode.set();  //initialize bitset and set all bits to 1
 
 
 	if (this->temperatureSensorsCount > 0){
 
-		vector <float> vTemperature;
+		std::vector <float> vTemperature;
 
 		for(uint8_t i = 0; i < this->temperatureSensorsCount; i++){
 			if(this->vTemperatureSensors[i].isValid() == true){
@@ -803,7 +803,7 @@ uint8_t & WaterTank::idGet(void){
 uint8_t PumpController::update(const double & _dt, const bool & _activate_watering){
 
 	bool consumed = false;
-	bitset<8> errcode;
+	std::bitset<8> errcode;
 	/*******errcode**********
 	 * 00000000
 	 * ||||||||->(0) 1 if cmd not consumed
@@ -1007,10 +1007,10 @@ void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status) {
 
 }
 
-void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status) {
+void pumpStateDecode(std::array<struct pumpstatus_s,4> & a_pump, const std::bitset<32> & _status) {
 
-	const bitset<32> pumpstatemask(0x0000000F);
-	bitset<32> tmp;
+	const std::bitset<32> pumpstatemask(0x0000000F);
+	std::bitset<32> tmp;
 
 	for (uint8_t i = 0; i < 4; i++)
 	{

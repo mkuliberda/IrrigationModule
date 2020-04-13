@@ -75,7 +75,6 @@ enum class pumpcontrollermode_t{
 	sleep
 };
 
-using namespace std;
 
 class Pump{
 
@@ -152,7 +151,7 @@ class DRV8833Pump: public Pump{
 
 private:
 
-	array<struct gpio_s, 4> 	aIN;							///< in1, in2, in3, in4
+	std::array<struct gpio_s, 4> 	aIN;							///< in1, in2, in3, in4
 	struct gpio_s 				led;
 	struct gpio_s 				fault;
 	struct gpio_s 				mode;
@@ -173,10 +172,10 @@ public:
 	};
 
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-								const array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led_pinout, \
+								const std::array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led_pinout, \
 								const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout);
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-								const array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led_pinout, \
+								const std::array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led_pinout, \
 								const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout);
 	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
@@ -251,8 +250,8 @@ public:
 	~WaterTank()
 	{};
 
-	vector <OpticalWaterLevelSensor> 	vOpticalWLSensors;
-	vector <DS18B20> 					vTemperatureSensors;
+	std::vector <OpticalWaterLevelSensor> 	vOpticalWLSensors;
+	std::vector <DS18B20> 					vTemperatureSensors;
 
 	bool 								init(void);
 	bool 								checkStateOK(const double &_dt, uint32_t & errcodeBitmask);
@@ -290,7 +289,7 @@ public:
 
 	BinaryPump							*pBinPump = nullptr;
 	DRV8833Pump							*p8833Pump = nullptr;
-	vector <AnalogDMAMoistureSensor> 	vDMAMoistureSensor;
+	std::vector <AnalogDMAMoistureSensor> 	vDMAMoistureSensor;
 
 	uint8_t								update(const double & _dt, const bool & _activate_watering);
 	bool								pumpCreate(const pumptype_t & _pumptype);
@@ -303,7 +302,7 @@ public:
 
 
 void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status);
-void pumpStateDecode(array<struct pumpstatus_s,4> & a_pump, const bitset<32> & _status);
+void pumpStateDecode(std::array<struct pumpstatus_s,4> & a_pump, const std::bitset<32> & _status);
 
 
 

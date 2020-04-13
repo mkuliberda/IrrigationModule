@@ -51,6 +51,8 @@ extern xQueueHandle sysStatusQueue;
 extern xQueueHandle serviceQueue;
 extern xQueueHandle singleValsQueue;
 
+using namespace std;
+
 bool handleConfirmation(IrrigationSector &_sector);
 
 void vADCReadTask( void *pvParameters )
@@ -333,21 +335,22 @@ void vIrrigationControlTask( void *pvParameters )
 					break;
 
 				case target_t::All:
-					/*xQueueOverwrite( tanksStatusQueue, &tank1_status); //TODO: implement this, for test now
+					xQueueOverwrite( tanksStatusQueue, &tank1_status); //TODO: implement this, for test now
 					plant1.health = sector[0].planthealthGet(plant1.id);
-					xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
+					xQueueSendToFront(plantsHealthQueue, &plant1, ( TickType_t ) 0);
 					plant2.health = sector[1].planthealthGet(plant2.id);
-					xQueueSendToFront(plantsHealthQueue, &plant2.health, ( TickType_t ) 0);
+					xQueueSendToFront(plantsHealthQueue, &plant2, ( TickType_t ) 0);
 					plant3.health = sector[1].planthealthGet(plant3.id);
-					xQueueSendToFront(plantsHealthQueue, &plant3.health, ( TickType_t ) 0);
+					xQueueSendToFront(plantsHealthQueue, &plant3, ( TickType_t ) 0);
 					plant4.health = sector[2].planthealthGet(plant4.id);
-					xQueueSendToFront(plantsHealthQueue, &plant4.health, ( TickType_t ) 0);
-				   	pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), pumps_status);
+					xQueueSendToFront(plantsHealthQueue, &plant4, ( TickType_t ) 0);
+				   	/*pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), pumps_status);
 				    pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), pumps_status);
 				    pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), pumps_status);
+				    xQueueOverwrite( pumpsStatusQueue, &pumps_status);*/ //TODO: implement this, for test now
 					sector_status_requested[0] = true;
 					sector_status_requested[1] = true;
-					sector_status_requested[2] = true;*/
+					sector_status_requested[2] = true;
 					HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET);
 					break;
 
@@ -592,6 +595,7 @@ void vWirelessCommTask( void *pvParameters )
 				delete outbound_msg;
 				/* Go back to RX mode */
 				radio1->PowerUpRx();
+				while(radio1->GetStatus() != 14);
 
 			}
 			if(xQueueReceive( sectorsStatusQueue, &encoded_sectors_status, 0 ) == pdPASS){
@@ -609,6 +613,7 @@ void vWirelessCommTask( void *pvParameters )
 				delete outbound_msg;
 				/* Go back to RX mode */
 				radio1->PowerUpRx();
+				while(radio1->GetStatus() != 14);
 			}
 
 			if(xQueueReceive( pumpsStatusQueue, &pumps_status, 0 ) == pdPASS){
@@ -626,6 +631,7 @@ void vWirelessCommTask( void *pvParameters )
 				delete outbound_msg;
 				/* Go back to RX mode */
 				radio1->PowerUpRx();
+				while(radio1->GetStatus() != 14);
 			}
 
 			while(xQueueReceive( plantsHealthQueue, &plant, 0 )){
@@ -643,6 +649,7 @@ void vWirelessCommTask( void *pvParameters )
 				delete outbound_msg;
 				/* Go back to RX mode */
 				radio1->PowerUpRx();
+				while(radio1->GetStatus() != 14);
 
 			}
 
@@ -661,10 +668,8 @@ void vWirelessCommTask( void *pvParameters )
 				delete outbound_msg;
 				/* Go back to RX mode */
 				radio1->PowerUpRx();
-
+				while(radio1->GetStatus() != 14);
 			}
-
-
     	}
 
     	LEDToggle(8);

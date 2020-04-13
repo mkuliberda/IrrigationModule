@@ -61,7 +61,7 @@
 /* Private define ------------------------------------------------------------*/
 #define TANKSSTATUS_BUFFER_LENGTH 1
 #define PUMPSSTATUS_BUFFER_LENGTH 1
-#define PLANTSHEALTH_BUFFER_LENGTH 5
+#define PLANTSHEALTH_BUFFER_LENGTH 10
 #define SECTORSSTATUS_BUFFER_LENGTH 1
 #define BATTERY_BUFFER_LENGTH 1
 #define ADCVALUES_BUFFER_LENGTH 9
