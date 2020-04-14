@@ -68,7 +68,7 @@ uint8_t& IrrigationSector::update(const double & _dt, const bool & _activate_wat
 
 	for (uint8_t i=0; i<_raw_adc_values_cnt; i++){
 		this->irrigationController->vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
-		this->vPlants.at(i).moisturePercentSet(this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
+		this->vPlants.at(i).moisturePercentSet(100.0 - this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
 	}
 
 	//get status of pump for now, later get overall sector status

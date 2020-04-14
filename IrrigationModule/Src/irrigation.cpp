@@ -625,9 +625,9 @@ bool WaterTank::checkStateOK(const double & _dt, uint32_t & errcodeBitmask){
 	 * |||||||| ||||||||->water temperature too low	 (16)	|||||||| ||||||||->(0)
 	 * |||||||| |||||||-->water temperature too high (17)	|||||||| |||||||-->(1)
 	 * |||||||| ||||||--->water level too low		 (18)	|||||||| ||||||--->(2)
-	 * |||||||| |||||---->							 (19)	|||||||| |||||---->(3)
-	 * |||||||| ||||----->temperature sensor1 invalid(20)	|||||||| ||||----->(4)
-	 * |||||||| |||------>temperature sensor2 invalid(21)	|||||||| |||------>(5)
+	 * |||||||| |||||---->temperature sensor1 invalid(19)	|||||||| |||||---->(3)
+	 * |||||||| ||||----->temperature sensor2 invalid(20)	|||||||| ||||----->(4)
+	 * |||||||| |||------>temperature sensor3 invalid(21)	|||||||| |||------>(5)
 	 * |||||||| ||------->wl sensor1 invalid         (22)	|||||||| ||------->(6)
 	 * |||||||| |-------->wl sensor2 invalid         (23)	|||||||| |-------->(7)
 	 * ||||||||---------->wl sensor3 invalid         (24)	||||||||---------->(8)
@@ -655,7 +655,7 @@ bool WaterTank::checkStateOK(const double & _dt, uint32_t & errcodeBitmask){
 			if(this->vTemperatureSensors[i].isValid() == true){
 				float temp = this->vTemperatureSensors[i].temperatureCelsiusRead(_dt);
 				vTemperature.push_back(temp);
-				errcode.reset(20+i);
+				errcode.reset(19+i);
 				tempReadingValid = true;
 			}
 		}

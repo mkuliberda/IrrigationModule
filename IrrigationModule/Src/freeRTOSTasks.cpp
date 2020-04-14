@@ -145,9 +145,9 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
 	struct plant_s plant1 = {"Pelargonia1", PLANT1_ID, 0.0};
-	struct plant_s plant2 = {"Surfinia1", PLANT2_ID, 0.0};
-	struct plant_s plant3 = {"Surfinia2", PLANT3_ID, 0.0};
-	struct plant_s plant4 = {"Trawa", PLANT4_ID, 0.0};
+	struct plant_s plant2 = {"Czujnik1", PLANT2_ID, 0.0};
+	struct plant_s plant3 = {"Czujnik2", PLANT3_ID, 0.0};
+	struct plant_s plant4 = {"Czujnik3", PLANT4_ID, 0.0};
 
 	struct servicecode_s errorcode;
 	//struct singlevalue_s single_val;
@@ -344,10 +344,6 @@ void vIrrigationControlTask( void *pvParameters )
 					xQueueSendToFront(plantsHealthQueue, &plant3, ( TickType_t ) 0);
 					plant4.health = sector[2].planthealthGet(plant4.id);
 					xQueueSendToFront(plantsHealthQueue, &plant4, ( TickType_t ) 0);
-				   	/*pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), pumps_status);
-				    pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), pumps_status);
-				    pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), pumps_status);
-				    xQueueOverwrite( pumpsStatusQueue, &pumps_status);*/ //TODO: implement this, for test now
 					sector_status_requested[0] = true;
 					sector_status_requested[1] = true;
 					sector_status_requested[2] = true;
