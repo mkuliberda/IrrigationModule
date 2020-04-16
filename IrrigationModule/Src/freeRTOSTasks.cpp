@@ -31,6 +31,10 @@
 #define PLANT2_ID 1
 #define PLANT3_ID 2
 #define PLANT4_ID 3
+#define PLANT5_ID 4
+#define PLANT6_ID 5
+#define PLANT7_ID 6
+#define PLANT8_ID 7
 #define SECTOR1_ID 0
 #define SECTOR2_ID 1
 #define SECTOR3_ID 2
@@ -144,10 +148,15 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
 	constexpr struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
-	struct plant_s plant1 = {"Pelargonia1", PLANT1_ID, 0.0};
-	struct plant_s plant2 = {"Czujnik1", PLANT2_ID, 0.0};
-	struct plant_s plant3 = {"Czujnik2", PLANT3_ID, 0.0};
-	struct plant_s plant4 = {"Czujnik3", PLANT4_ID, 0.0};
+
+	struct plant_s plant1 = {"Sensor1", PLANT1_ID, 0.0};
+	struct plant_s plant2 = {"Sensor2", PLANT2_ID, 0.0};
+	struct plant_s plant3 = {"Sensor3", PLANT3_ID, 0.0};
+	struct plant_s plant4 = {"Sensor4", PLANT4_ID, 0.0};
+	/*struct plant_s plant5 = {"Sensor5", PLANT5_ID, 0.0};
+	struct plant_s plant6 = {"Sensor6", PLANT6_ID, 0.0};
+	struct plant_s plant7 = {"Sensor7", PLANT7_ID, 0.0};
+	struct plant_s plant8 = {"Sensor8", PLANT8_ID, 0.0};*/
 
 	struct servicecode_s errorcode;
 	//struct singlevalue_s single_val;

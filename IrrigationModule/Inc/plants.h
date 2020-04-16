@@ -56,7 +56,7 @@ public:
 
 	void 					moisturePercentSet(const float & _soilmoisture);
 	float& 					moisturePercentGet(void);
-	std::string& 				nameGet(void);
+	std::string& 			nameGet(void);
 	void					nameChange(const std::string & _new_name);
 	const uint32_t&			idGet(void);
 
