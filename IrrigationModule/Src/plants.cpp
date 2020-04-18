@@ -22,7 +22,7 @@ void Plant::nameChange(const std::string & _new_name){
 	this->name.assign(_new_name);
 }
 
-const uint32_t& Plant::idGet(void){
+const uint8_t& Plant::idGet(void){
 	return this->id;
 }
 
@@ -32,10 +32,10 @@ const uint32_t& Plant::idGet(void){
 /***********************************/
 
 const uint8_t& IrrigationSector:: sectorGet(void){
-	return this->sector;
+	return this->id;
 }
 
-bool IrrigationSector::plantCreate(const std::string & _name, const uint32_t & _id){
+bool IrrigationSector::plantCreate(const std::string & _name, const uint8_t & _id){
 
 	bool success = true;
 
@@ -107,7 +107,7 @@ void IrrigationSector::measurementsSet(uint16_t *_raw_adc_values_array, const ui
 	}
 }
 
-float IrrigationSector::planthealthGet(const uint32_t & _id){
+float IrrigationSector::planthealthGet(const uint8_t & _id){
 
 	float tempHealth = -1000.0;
 

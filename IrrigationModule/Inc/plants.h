@@ -25,7 +25,7 @@
 
 struct plant_s{
 	char name[NAME_LENGTH];
-	uint32_t id;
+	uint8_t id;
 	float health;
 };
 
@@ -42,11 +42,11 @@ private:
 
 	std::string name;
 	float soilMoisture;
-	const uint32_t id;
+	const uint8_t id;
 
 public:
 
-	Plant(const std::string & _name, const uint32_t & _id):
+	Plant(const std::string & _name, const uint8_t & _id):
 	name(_name),
 	soilMoisture(-1000),
 	id(_id)
@@ -58,7 +58,7 @@ public:
 	float& 					moisturePercentGet(void);
 	std::string& 			nameGet(void);
 	void					nameChange(const std::string & _new_name);
-	const uint32_t&			idGet(void);
+	const uint8_t&			idGet(void);
 
 };
 
@@ -66,7 +66,7 @@ class IrrigationSector{
 
 private:
 
-	const uint8_t 	sector;
+	const uint8_t 	id;
 	const uint8_t 	plantsCountMax = 20;
 	uint8_t 		plantsCount;
 	std::vector<Plant> 	vPlants;
@@ -77,8 +77,8 @@ public:
 
 	PumpController *irrigationController;
 
-	IrrigationSector(const uint8_t & _sector):
-	sector(_sector),
+	IrrigationSector(const uint8_t & _id):
+	id(_id),
 	plantsCount(0),
 	status(0),
 	water_plants(false)
@@ -91,13 +91,13 @@ public:
 	}
 
 	const uint8_t& 			sectorGet(void);
-	bool 					plantCreate(const std::string & _name, const uint32_t & _id);
+	bool 					plantCreate(const std::string & _name, const uint8_t & _id);
 	uint8_t& 				update(const double & _dt);
 	uint8_t& 				update(const double & _dt, const bool & _activate_watering);
 	uint8_t& 				update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt);
 	uint8_t& 				plantscountGet(void);
 	float 					planthealthGet(const std::string & _name);
-	float 					planthealthGet(const uint32_t & _id);
+	float 					planthealthGet(const uint8_t & _id);
 	void					measurementsSet(uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt);
 	uint8_t& 				statusGet(void);
 	pumpstate_t 			pumpstateGet(void);
