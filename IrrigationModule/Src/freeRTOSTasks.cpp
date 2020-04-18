@@ -22,6 +22,7 @@
 #include "adc.h"
 #include "nrf24l01.h"
 #include "msg_definitions_irrigation.h"
+#include "power.h"
 
 
 #define PUMP1_ID 0
@@ -40,6 +41,7 @@
 #define SECTOR3_ID 2
 #define WATERTANK1_ID 0
 #define AVBL_SECTORS 3
+#define BATTERY1_ID 0
 
 extern SemaphoreHandle_t xUserButtonSemaphore;
 extern SemaphoreHandle_t xADCReadingsReadySemaphore;
@@ -54,6 +56,7 @@ extern xQueueHandle confirmationsQueue;
 extern xQueueHandle sysStatusQueue;
 extern xQueueHandle serviceQueue;
 extern xQueueHandle singleValsQueue;
+extern xQueueHandle batteryQueue;
 
 using namespace std;
 
@@ -160,6 +163,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 	struct servicecode_s errorcode;
 	//struct singlevalue_s single_val;
+	struct battery_s battery;
 
 	struct cmd_s received_commands[EXTCMDS_BUFFER_LENGTH];
 	uint8_t rcvd_cmds_nbr = 0;
@@ -519,9 +523,10 @@ void vWirelessCommTask( void *pvParameters )
 	struct confirmation_s confirmation;
 	bool radio1_configured = false;
 	tankstatus_s tank1_status;
-	uint32_t pumps_status = 0;
+	uint32_t encoded_pumps_status = 0;
 	uint32_t encoded_sectors_status = 0;
 	struct plant_s plant;
+	struct battery_s battery;
 
 
 	/* Receiver address */
@@ -621,10 +626,10 @@ void vWirelessCommTask( void *pvParameters )
 				while(radio1->GetStatus() != 14);
 			}
 
-			if(xQueueReceive( pumpsStatusQueue, &pumps_status, 0 ) == pdPASS){
+			if(xQueueReceive( pumpsStatusQueue, &encoded_pumps_status, 0 ) == pdPASS){
 
 				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
-				outbound_msg->encodeGeneric(target_t::Pump, 255, pumps_status);
+				outbound_msg->encodeGeneric(target_t::Pump, 255, encoded_pumps_status);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
 				/* Wait for data to be sent */
@@ -657,6 +662,26 @@ void vWirelessCommTask( void *pvParameters )
 				while(radio1->GetStatus() != 14);
 
 			}
+
+			while(xQueueReceive( batteryQueue, &battery, 0 )){
+
+				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
+				//outbound_msg->encode(battery);TODO
+				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
+
+				/* Wait for data to be sent */
+				do {
+					/* Wait till sending */
+					transmissionStatus = radio1->GetTransmissionStatus();
+				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
+
+				delete outbound_msg;
+				/* Go back to RX mode */
+				radio1->PowerUpRx();
+				while(radio1->GetStatus() != 14);
+
+			}
+
 
 			while(xQueueReceive( confirmationsQueue, &confirmation, 0 )){
 

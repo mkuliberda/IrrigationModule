@@ -61,6 +61,7 @@
 #include "utilities.h"
 #include "plants.h"
 #include "msg_definitions_irrigation.h"
+#include "power.h"
 
 /* USER CODE BEGIN Includes */
 SemaphoreHandle_t xUserButtonSemaphore = NULL;
@@ -76,6 +77,7 @@ xQueueHandle extCommandsQueue;
 xQueueHandle confirmationsQueue;
 xQueueHandle serviceQueue;
 xQueueHandle singleValsQueue;
+xQueueHandle batteryQueue;
 
 /* USER CODE END Includes */
 
@@ -144,6 +146,7 @@ int main(void)
   confirmationsQueue = xQueueCreate(CONFIRM_BUFFER_LENGTH, sizeof( confirmation_s) );
   serviceQueue = xQueueCreate(SERVICE_BUFFER_LENGTH, sizeof( servicecode_s) );
   singleValsQueue = xQueueCreate(SINGLEVALUES_BUFFER_LENGTH, sizeof( singlevalue_s) );
+  batteryQueue = xQueueCreate(BATTERY_BUFFER_LENGTH, sizeof( battery_s) );
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
