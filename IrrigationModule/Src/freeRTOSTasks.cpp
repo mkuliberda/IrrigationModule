@@ -330,8 +330,7 @@ void vIrrigationControlTask( void *pvParameters )
 				case target_t::Power:
 					if (received_commands[i].target_id == battery1_status.id){
 						battery1_status.percentage = battery1->getPercentage();
-						battery1_status.error = battery1->getErrors();
-						battery1_status.state = battery1->getState();
+						battery1_status.status = battery1->getStatus();
 						battery1_status.remaining_time_min = battery1->getRemainingTimeMinutes();
 						xQueueOverwrite( batteryStatusQueue, &battery1_status);
 					}
@@ -369,8 +368,8 @@ void vIrrigationControlTask( void *pvParameters )
 					xQueueSendToFront(plantsHealthQueue, &plant4, ( TickType_t ) 0);
 					battery1_status.id = battery1->getId();
 					battery1_status.percentage = battery1->getPercentage();
-					battery1_status.error = battery1->getErrors();
-					battery1_status.state = battery1->getState();
+					//battery1_status.status = battery1->getErrors();
+					//battery1_status.state = battery1->getState();
 					battery1_status.remaining_time_min = battery1->getRemainingTimeMinutes();
 					xQueueOverwrite( batteryStatusQueue, &battery1_status);
 					sector_status_requested[0] = true;

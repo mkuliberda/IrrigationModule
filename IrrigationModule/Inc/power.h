@@ -11,6 +11,7 @@
 #include "stm32f3xx_hal.h"
 #include <utilities.h>
 #include <vector>
+#include <bitset>
 
 enum class batterytype_t: uint8_t{
 	undefined,
@@ -27,12 +28,15 @@ enum class batterystate_t: uint8_t{
 	discharging
 };
 
-enum batteryerror_t: uint8_t{
-	battery_ok 		= 0,
-	overvoltage 	= 2,
-	overtemperature = 4,
-	overloaded 		= 8,
-	flat			= 16
+struct batteryerror_t{
+	uint8_t overvoltage 	: 1;
+	uint8_t overdischarge 	: 1;
+	uint8_t overheated 		: 1;
+	uint8_t overloaded 		: 1;
+	uint8_t free1 			: 1;
+	uint8_t free2 			: 1;
+	uint8_t free3 			: 1;
+	uint8_t free4 			: 1;
 };
 
 enum class batteryinterface_t: uint8_t{
@@ -47,8 +51,7 @@ struct battery_s{
 	uint16_t remaining_time_min;
 	uint8_t id;
 	uint8_t percentage;
-	batterystate_t state;
-	batteryerror_t error;
+	uint8_t status;
 };
 
 
@@ -65,7 +68,7 @@ private:
 	bool valid = false;
 	const batterytype_t type = batterytype_t::undefined;
 	batterystate_t state = batterystate_t::undetermined;
-	batteryerror_t errors = batteryerror_t::battery_ok;
+	struct batteryerror_t errors;
 	uint16_t remaining_time_min;
 	const batteryinterface_t interface;
 	const uint8_t  cell_count;
@@ -198,6 +201,7 @@ public:
 	uint16_t&				getRemainingTimeMinutes(void);
 	batterystate_t&			getState(void);
 	batteryerror_t&			getErrors(void);
+	uint8_t 				getStatus(void);
 	void					configureAdcCharacteristics(const float &_adc_voltage_divider_error_factor, const float &_adc_reference_voltage, const uint32_t &_adc_levels);
 	bool					update(const float & _dt);
 	bool					update(const float & _dt, uint16_t *_raw_adc_values, const uint8_t &_adc_values_count);

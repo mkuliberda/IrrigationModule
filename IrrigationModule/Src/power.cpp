@@ -10,8 +10,7 @@
 
 bool& Battery::	isValid(void){
 	if (this->voltage <= (this->cell_voltage_max * this->cell_count) && \
-			this->voltage >= (this->cell_voltage_min * this->cell_count) &&\
-			this->errors == batteryerror_t::battery_ok) return this->valid = true;
+			this->voltage >= (this->cell_voltage_min * this->cell_count)) return this->valid = true;
 	else return this->valid = false;
 }
 bool Battery::isCharging(void){
@@ -47,6 +46,25 @@ batterystate_t& Battery::getState(void){
 }
 batteryerror_t&	Battery::getErrors(void){
 	return this->errors;
+}
+uint8_t Battery::getStatus(void){
+	std::bitset<8> status;
+	switch (this->state){
+	case batterystate_t::undetermined:
+		status.set(0);
+		break;
+	case batterystate_t::charging:
+		status.set(1);
+		break;
+	default:
+		break;
+	}
+	if (this->errors.overvoltage) status.set(7);
+	if (this->errors.overdischarge) status.set(6);
+	if (this->errors.overloaded) status.set(5);
+	if (this->errors.overheated) status.set(4);
+
+	return static_cast<uint8_t>(status.to_ulong());
 }
 void Battery::configureAdcCharacteristics(const float &_adc_voltage_divider_error_factor, const float &_adc_reference_voltage, const uint32_t &_adc_levels){
 	this->adc_voltage_divider_error_factor = _adc_voltage_divider_error_factor;
