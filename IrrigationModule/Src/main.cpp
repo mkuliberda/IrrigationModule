@@ -77,7 +77,6 @@ xQueueHandle extCommandsQueue;
 xQueueHandle confirmationsQueue;
 xQueueHandle serviceQueue;
 xQueueHandle singleValsQueue;
-xQueueHandle batteryQueue;
 
 /* USER CODE END Includes */
 
@@ -141,12 +140,11 @@ int main(void)
   sectorsStatusQueue = xQueueCreate(SECTORSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
   plantsHealthQueue = xQueueCreate(PLANTSHEALTH_BUFFER_LENGTH, sizeof( plant_s ) );
   sysStatusQueue = xQueueCreate(SYSSTATUS_BUFFER_LENGTH, sizeof( uint32_t ) );
-  batteryStatusQueue = xQueueCreate(BATTERY_BUFFER_LENGTH, sizeof( uint32_t ) );
   extCommandsQueue = xQueueCreate(EXTCMDS_BUFFER_LENGTH, sizeof( cmd_s) );
   confirmationsQueue = xQueueCreate(CONFIRM_BUFFER_LENGTH, sizeof( confirmation_s) );
   serviceQueue = xQueueCreate(SERVICE_BUFFER_LENGTH, sizeof( servicecode_s) );
   singleValsQueue = xQueueCreate(SINGLEVALUES_BUFFER_LENGTH, sizeof( singlevalue_s) );
-  batteryQueue = xQueueCreate(BATTERY_BUFFER_LENGTH, sizeof( battery_s) );
+  batteryStatusQueue = xQueueCreate(BATTERY_BUFFER_LENGTH, sizeof( battery_s) );
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */

@@ -56,7 +56,6 @@ extern xQueueHandle confirmationsQueue;
 extern xQueueHandle sysStatusQueue;
 extern xQueueHandle serviceQueue;
 extern xQueueHandle singleValsQueue;
-extern xQueueHandle batteryQueue;
 
 using namespace std;
 
@@ -163,7 +162,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 	struct servicecode_s errorcode;
 	//struct singlevalue_s single_val;
-	struct battery_s battery;
+	struct battery_s battery1_status;
 
 	struct cmd_s received_commands[EXTCMDS_BUFFER_LENGTH];
 	uint8_t rcvd_cmds_nbr = 0;
@@ -222,6 +221,9 @@ void vIrrigationControlTask( void *pvParameters )
 		tank1->vTemperatureSensors.at(0).init(ds18b20_1gpio, &htim7);
 	}
 
+	Battery *battery1 = new Battery(BATTERY1_ID,batterytype_t::liion, batteryinterface_t::adc, 1, 2200);
+	battery1->configureAdcCharacteristics(1, 3.0, 4095);
+
 
     for( ;; )
     {
@@ -270,6 +272,7 @@ void vIrrigationControlTask( void *pvParameters )
 				sector[0].measurementsSet(sector1_adc_value, 1);
 				sector[1].measurementsSet(sector2_adc_value, 2);
 				sector[2].measurementsSet(sector3_adc_value, 1);
+				battery1->update(0.5, battery_adc_value, 1);
 		   }
     	}
 
@@ -298,33 +301,40 @@ void vIrrigationControlTask( void *pvParameters )
 				case target_t::Plant:
 					if		(received_commands[i].target_id == plant1.id){
 						plant1.health = sector[0].planthealthGet(plant1.id);
-						xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
+						xQueueSendToFront(plantsHealthQueue, &plant1, ( TickType_t ) 0);
 					}
 					else if	(received_commands[i].target_id == plant2.id){
 						plant2.health = sector[1].planthealthGet(plant2.id);
-						xQueueSendToFront(plantsHealthQueue, &plant2.health, ( TickType_t ) 0);
+						xQueueSendToFront(plantsHealthQueue, &plant2, ( TickType_t ) 0);
 					}
 					else if	(received_commands[i].target_id == plant3.id){
 						plant3.health = sector[1].planthealthGet(plant3.id);
-						xQueueSendToFront(plantsHealthQueue, &plant3.health, ( TickType_t ) 0);
+						xQueueSendToFront(plantsHealthQueue, &plant3, ( TickType_t ) 0);
 					}
 					else if	(received_commands[i].target_id == plant4.id){
 						plant4.health = sector[2].planthealthGet(plant4.id);
-						xQueueSendToFront(plantsHealthQueue, &plant4.health, ( TickType_t ) 0);
+						xQueueSendToFront(plantsHealthQueue, &plant4, ( TickType_t ) 0);
 					}
 					else if (received_commands[i].target_id == 255){
 						plant1.health = sector[0].planthealthGet(plant1.id);
-						xQueueSendToFront(plantsHealthQueue, &plant1.health, ( TickType_t ) 0);
+						xQueueSendToFront(plantsHealthQueue, &plant1, ( TickType_t ) 0);
 						plant2.health = sector[1].planthealthGet(plant2.id);
-						xQueueSendToFront(plantsHealthQueue, &plant2.health, ( TickType_t ) 0);
+						xQueueSendToFront(plantsHealthQueue, &plant2, ( TickType_t ) 0);
 						plant3.health = sector[1].planthealthGet(plant3.id);
-						xQueueSendToFront(plantsHealthQueue, &plant3.health, ( TickType_t ) 0);
+						xQueueSendToFront(plantsHealthQueue, &plant3, ( TickType_t ) 0);
 						plant4.health = sector[2].planthealthGet(plant4.id);
-						xQueueSendToFront(plantsHealthQueue, &plant4.health, ( TickType_t ) 0);
+						xQueueSendToFront(plantsHealthQueue, &plant4, ( TickType_t ) 0);
 					}
 					break;
 
 				case target_t::Power:
+					if (received_commands[i].target_id == battery1_status.id){
+						battery1_status.percentage = battery1->getPercentage();
+						battery1_status.error = battery1->getErrors();
+						battery1_status.state = battery1->getState();
+						battery1_status.remaining_time_min = battery1->getRemainingTimeMinutes();
+						xQueueOverwrite( batteryStatusQueue, &battery1_status);
+					}
 					break;
 
 				case target_t::System:
@@ -357,6 +367,12 @@ void vIrrigationControlTask( void *pvParameters )
 					xQueueSendToFront(plantsHealthQueue, &plant3, ( TickType_t ) 0);
 					plant4.health = sector[2].planthealthGet(plant4.id);
 					xQueueSendToFront(plantsHealthQueue, &plant4, ( TickType_t ) 0);
+					battery1_status.id = battery1->getId();
+					battery1_status.percentage = battery1->getPercentage();
+					battery1_status.error = battery1->getErrors();
+					battery1_status.state = battery1->getState();
+					battery1_status.remaining_time_min = battery1->getRemainingTimeMinutes();
+					xQueueOverwrite( batteryStatusQueue, &battery1_status);
 					sector_status_requested[0] = true;
 					sector_status_requested[1] = true;
 					sector_status_requested[2] = true;
@@ -373,7 +389,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 					switch (received_commands[i].target_id){
 					case SECTOR1_ID:
-						if (watertank1_valid){
+						if (watertank1_valid && battery1->isValid()){
 							sector[0].wateringSet(true);
 							cmd_confirmation_required[0] = true;
 						}
@@ -381,7 +397,7 @@ void vIrrigationControlTask( void *pvParameters )
 						break;
 
 					case SECTOR2_ID:
-						if (watertank1_valid){
+						if (watertank1_valid && battery1->isValid()){
 							sector[1].wateringSet(true);
 							cmd_confirmation_required[1] = true;
 						}
@@ -389,7 +405,7 @@ void vIrrigationControlTask( void *pvParameters )
 						break;
 
 					case SECTOR3_ID:
-						if (watertank1_valid){
+						if (watertank1_valid && battery1->isValid()){
 							sector[2].wateringSet(true);
 							cmd_confirmation_required[2] = true;
 						}
@@ -489,6 +505,7 @@ void vIrrigationControlTask( void *pvParameters )
     }
 
     delete tank1;
+    delete battery1;
 
 }
 void vStatusNotifyTask( void *pvParameters )
@@ -526,7 +543,7 @@ void vWirelessCommTask( void *pvParameters )
 	uint32_t encoded_pumps_status = 0;
 	uint32_t encoded_sectors_status = 0;
 	struct plant_s plant;
-	struct battery_s battery;
+	struct battery_s battery_status;
 
 
 	/* Receiver address */
@@ -663,10 +680,10 @@ void vWirelessCommTask( void *pvParameters )
 
 			}
 
-			while(xQueueReceive( batteryQueue, &battery, 0 )){
+			if (xQueueReceive( batteryStatusQueue, &battery_status, 0 ) == pdPASS){
 
 				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
-				//outbound_msg->encode(battery);TODO
+				outbound_msg->encode(battery_status);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
 				/* Wait for data to be sent */
@@ -681,7 +698,6 @@ void vWirelessCommTask( void *pvParameters )
 				while(radio1->GetStatus() != 14);
 
 			}
-
 
 			while(xQueueReceive( confirmationsQueue, &confirmation, 0 )){
 

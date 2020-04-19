@@ -9,7 +9,9 @@
 
 
 bool& Battery::	isValid(void){
-	if (this->voltage_current <= this->voltage_max && this->voltage_current >= this->voltage_min) return this->valid = true;
+	if (this->voltage <= (this->cell_voltage_max * this->cell_count) && \
+			this->voltage >= (this->cell_voltage_min * this->cell_count) &&\
+			this->errors == batteryerror_t::battery_ok) return this->valid = true;
 	else return this->valid = false;
 }
 bool Battery::isCharging(void){
@@ -22,7 +24,7 @@ const batterytype_t& Battery::getType(void){
 	return this->type;
 }
 float& Battery::getVoltage(void){
-	return this->voltage_current;
+	return this->voltage;
 }
 float& Battery::getCurrent(void){
 	return this->current;
@@ -32,15 +34,13 @@ float Battery::getRemainingCapacity(void){
 	else return this->capacity_full;
 }
 float& Battery::getPercentage(void){
-	if (this->voltage_current < this->voltage_min) return this->percentage = 0;
-	else if (this->voltage_current > this->voltage_max) return this->percentage = 100;
-	else return this->percentage = (this->voltage_current - this->voltage_min) / (this->voltage_max - this->voltage_min) * 100.0;
+	return this->percentage;
 }
 const uint8_t& Battery::getCellCount(void){
 	return this->cell_count;
 }
-uint32_t& Battery::getRemainingTimeSeconds(void){
-	return this->remaining_time_s;
+uint16_t& Battery::getRemainingTimeMinutes(void){
+	return this->remaining_time_min;
 }
 batterystate_t& Battery::getState(void){
 	return this->state;
@@ -48,23 +48,59 @@ batterystate_t& Battery::getState(void){
 batteryerror_t&	Battery::getErrors(void){
 	return this->errors;
 }
-void Battery::configureAdcCharacteristics(const float &_adc_voltage_divider_error_factor, const float &_adc_reference_voltage, const uint32_t &_adc_voltage_levels){
+void Battery::configureAdcCharacteristics(const float &_adc_voltage_divider_error_factor, const float &_adc_reference_voltage, const uint32_t &_adc_levels){
 	this->adc_voltage_divider_error_factor = _adc_voltage_divider_error_factor;
 	this->adc_reference_voltage = _adc_reference_voltage;
-	this->adc_voltage_levels = _adc_voltage_levels;
+	this->adc_levels = _adc_levels;
+}
+
+void Battery::calculatePercentage(void){
+	if (this->voltage < (this->cell_voltage_min * this->cell_count)) this->percentage = 0;
+	else if (this->voltage > (this->cell_voltage_max * this->cell_count)) this->percentage = 100;
+	else this->percentage = (this->voltage - (this->cell_voltage_min * this->cell_count)) / ((this->cell_voltage_max * this->cell_count) - (this->cell_voltage_min * this->cell_count)) * 100.0;
+}
+
+void Battery::calculateRemainingTimeMinutes(const float &_dt){
+	//TODO
+}
+
+void Battery::determineState(const float &_dt){
+	if((this->dt_from_last_calc += _dt) > this->calc_timespan_s){
+		this->voltage > this->voltage_previous ? this->state = batterystate_t::charging : this->state = batterystate_t::discharging;
+		this->voltage_previous = this->voltage;
+		this->dt_from_last_calc = 0;
+	}
 }
 
 bool Battery::update(const float & _dt){
 	return false; //TODO:
 }
 bool Battery::update(const float & _dt, uint16_t *_raw_adc_values, const uint8_t &_adc_values_count){
+	bool success = true;
+
 	if (this->interface == batteryinterface_t::adc){
 		if (this->cell_count == _adc_values_count){
-			return true; //TODO
+			this->voltage = 0;
+			for (uint8_t i=0; i<this->cell_count; ++i){
+				float cell_voltage = (_raw_adc_values[i] * this->adc_reference_voltage / this->adc_levels) * this->adc_voltage_divider_error_factor;
+				this->voltage += cell_voltage;
+				this->calculatePercentage();
+				this->determineState(_dt);
+			}
 		}
-		else return false;
+		else if (this->cell_count > 1 && _adc_values_count == 1){
+			this->voltage = (_raw_adc_values[0] * this->adc_reference_voltage / this->adc_levels) * this->adc_voltage_divider_error_factor;
+			this->calculatePercentage();
+			this->determineState(_dt);
+		}
+		else success = false;
+		//TODO: errors set/reset
 	}
-	else return false;
+	else{
+		success = false;
+	}
+
+	return success;
 }
 
 
