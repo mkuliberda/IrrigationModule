@@ -43,6 +43,12 @@
 #define AVBL_SECTORS 3
 #define BATTERY1_ID 0
 
+#define REFRESH_RATE_SECONDS_ANALOG 0.5
+#define REFRESH_RATE_SECONDS_OTHER 0.5
+#define REFRESH_RATE_SECONDS_IRRIGATION 0.1
+#define REFRESH_RATE_SECONDS_COMMS 0.05
+
+
 extern SemaphoreHandle_t xUserButtonSemaphore;
 extern SemaphoreHandle_t xADCReadingsReadySemaphore;
 extern xQueueHandle adcValuesQueue;
@@ -64,7 +70,7 @@ bool handleConfirmation(IrrigationSector &_sector);
 void vADCReadTask( void *pvParameters )
 {
 	portTickType xLastWakeTime;
-	constexpr portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
+	constexpr portTickType xFrequencySeconds = REFRESH_RATE_SECONDS_ANALOG * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
 
     for( ;; )
@@ -77,11 +83,9 @@ void vADCReadTask( void *pvParameters )
 
 void vLEDFlashTask( void *pvParameters )
 {
-	/*************************
-	 * light led every second
-	 *************************/
+
 	portTickType xLastWakeTime;
-	constexpr portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
+	constexpr portTickType xFrequencySeconds = REFRESH_RATE_SECONDS_OTHER * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
 
     for( ;; )
@@ -94,7 +98,7 @@ void vLEDFlashTask( void *pvParameters )
 void vUserButtonCheckTask(void *pvParameters )
 {
 	portTickType xLastWakeTime;
-	constexpr portTickType xFrequencySeconds = 0.5 * TASK_FREQ_MULTIPLIER; //<2Hz
+	constexpr portTickType xFrequencySeconds = REFRESH_RATE_SECONDS_OTHER * TASK_FREQ_MULTIPLIER; //<2Hz
 	xLastWakeTime=xTaskGetTickCount();
 
     for( ;; )
@@ -113,16 +117,20 @@ void vIrrigationControlTask( void *pvParameters )
 {
 
 	portTickType xLastWakeTime;
-	constexpr portTickType xFrequencySeconds = 0.1 * TASK_FREQ_MULTIPLIER; //<10Hz
+	constexpr portTickType xFrequencySeconds = REFRESH_RATE_SECONDS_IRRIGATION * TASK_FREQ_MULTIPLIER; //<10Hz
 	xLastWakeTime=xTaskGetTickCount();
 
-	constexpr double tank1_height_meters = 0.43;
-	constexpr double tank1_volume_liters = 5.0;
-	constexpr float wls_high_pos_meters = 0.12;
-	constexpr float wls_low_pos_meters = 0.38;
+	constexpr double tank1_height_meters = 0.6;
+	constexpr double tank1_volume_liters = 50.0;
+	//constexpr float wls_high_pos_meters = 0.12;
+	constexpr float wls_low_pos_meters = 0.065;
 	constexpr uint32_t pump_maxruntime_seconds = 60;
 	constexpr uint32_t pump_breaktime_seconds = 20;
-
+	constexpr float battery1_capacity = 4400;
+	constexpr float battery1_cell_count = 1;
+	constexpr float battery1_volt_div_error_factor = 1.0;
+	constexpr float adc_reference_voltage = 3.0;
+	constexpr uint32_t adc_voltage_levels = 4095;
 
 	constexpr struct gpio_s pump1gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN1_Pin};
 	constexpr struct gpio_s pump1gpio_in2 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN2_Pin};
@@ -147,30 +155,29 @@ void vIrrigationControlTask( void *pvParameters )
 
 	constexpr struct gpio_s ds18b20_1gpio = {DS18B20_1_GPIO_Port, DS18B20_1_Pin};
 
-	constexpr struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
+	//constexpr struct gpio_s opticalwaterlevelsensor1gpio = {T1_WATER_LVL_H_GPIO_Port, T1_WATER_LVL_H_Pin};
 	constexpr struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
 
 
-	struct plant_s plant1 = {"Sensor1", PLANT1_ID, 0.0};
-	struct plant_s plant2 = {"Sensor2", PLANT2_ID, 0.0};
-	struct plant_s plant3 = {"Sensor3", PLANT3_ID, 0.0};
-	struct plant_s plant4 = {"Sensor4", PLANT4_ID, 0.0};
-	/*struct plant_s plant5 = {"Sensor5", PLANT5_ID, 0.0};
-	struct plant_s plant6 = {"Sensor6", PLANT6_ID, 0.0};
-	struct plant_s plant7 = {"Sensor7", PLANT7_ID, 0.0};
-	struct plant_s plant8 = {"Sensor8", PLANT8_ID, 0.0};*/
+	struct plantstatus_s plant1 = {"Sensor1", PLANT1_ID, 0.0};
+	struct plantstatus_s plant2 = {"Sensor2", PLANT2_ID, 0.0};
+	struct plantstatus_s plant3 = {"Sensor3", PLANT3_ID, 0.0};
+	struct plantstatus_s plant4 = {"Sensor4", PLANT4_ID, 0.0};
+	/*struct plantstatus_s plant5 = {"Sensor5", PLANT5_ID, 0.0};
+	struct plantstatus_s plant6 = {"Sensor6", PLANT6_ID, 0.0};
+	struct plantstatus_s plant7 = {"Sensor7", PLANT7_ID, 0.0};
+	struct plantstatus_s plant8 = {"Sensor8", PLANT8_ID, 0.0};*/
 
 	struct servicecode_s errorcode;
-	//struct singlevalue_s single_val;
-	struct battery_s battery1_status;
+	struct batterystatus_s battery1_status;
 
 	struct cmd_s received_commands[EXTCMDS_BUFFER_LENGTH];
 	uint8_t rcvd_cmds_nbr = 0;
 
 	double dt_seconds = xFrequencySeconds/1000.0f;
 
-	struct tankstatus_s tank1_status = {WATERTANK1_ID, 0};
-	uint32_t pumps_status = 0; //8 bits per pump
+	struct tankstatus_s watertank1 = {WATERTANK1_ID, 0};
+	uint32_t encoded_pumps_status = 0; //8 bits per pump
 	uint32_t encoded_sectors_status = 0;
 	uint8_t sector_status[MAX_ENTITIES];
 	bool sector_status_requested[MAX_ENTITIES];
@@ -212,24 +219,24 @@ void vIrrigationControlTask( void *pvParameters )
 
 	WaterTank *tank1 = new WaterTank(tank1_height_meters, tank1_volume_liters, WATERTANK1_ID);
 	if (tank1->waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
-		tank1->vOpticalWLSensors.at(0).init(wls_high_pos_meters, opticalwaterlevelsensor1gpio);
+		tank1->vOpticalWLSensors.at(0).init(wls_low_pos_meters, opticalwaterlevelsensor2gpio);
 	}
-	if (tank1->waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
-		tank1->vOpticalWLSensors.at(1).init(wls_low_pos_meters, opticalwaterlevelsensor2gpio);
-	}
+	//if (tank1->waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
+	//	tank1->vOpticalWLSensors.at(0).init(wls_high_pos_meters, opticalwaterlevelsensor1gpio);
+	//}
 	if (tank1->temperatureSensorCreate(temperaturesensortype_t::ds18b20) == true){
 		tank1->vTemperatureSensors.at(0).init(ds18b20_1gpio, &htim7);
 	}
 
-	Battery *battery1 = new Battery(BATTERY1_ID,batterytype_t::liion, batteryinterface_t::adc, 1, 2200);
-	battery1->configureAdcCharacteristics(1, 3.0, 4095);
+	Battery *battery1 = new Battery(BATTERY1_ID, batterytype_t::liion, batteryinterface_t::adc, battery1_cell_count, battery1_capacity);
+	battery1->configureAdcCharacteristics(battery1_volt_div_error_factor, adc_reference_voltage, adc_voltage_levels);
 
 
     for( ;; )
     {
     	//TODO calculate dt_seconds based on real world period instead of a fixed one
     	rcvd_cmds_nbr = 0;
-    	watertank1_valid = tank1->checkStateOK(dt_seconds, tank1_status.state);
+    	watertank1_valid = tank1->checkStateOK(dt_seconds, watertank1.state);
 
     	if(xADCReadingsReadySemaphore != NULL)
     	{
@@ -272,7 +279,7 @@ void vIrrigationControlTask( void *pvParameters )
 				sector[0].measurementsSet(sector1_adc_value, 1);
 				sector[1].measurementsSet(sector2_adc_value, 2);
 				sector[2].measurementsSet(sector3_adc_value, 1);
-				battery1->update(0.5, battery_adc_value, 1);
+				battery1->update(REFRESH_RATE_SECONDS_ANALOG, battery_adc_value, 1);
 		   }
     	}
 
@@ -288,14 +295,14 @@ void vIrrigationControlTask( void *pvParameters )
 
 				switch(received_commands[i].target){
 				case target_t::Tank:
-					xQueueOverwrite( tanksStatusQueue, &tank1_status);
+					xQueueOverwrite( tanksStatusQueue, &watertank1);
 					break;
 
 				case target_t::Pump:
-				   	pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), pumps_status);
-				    pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), pumps_status);
-				    pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), pumps_status);
-				    xQueueOverwrite( pumpsStatusQueue, &pumps_status);
+				   	pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
+				    pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
+				    pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
+				    xQueueOverwrite( pumpsStatusQueue, &encoded_pumps_status);
 					break;
 
 				case target_t::Plant:
@@ -357,7 +364,9 @@ void vIrrigationControlTask( void *pvParameters )
 					break;
 
 				case target_t::All:
-					xQueueOverwrite( tanksStatusQueue, &tank1_status); //TODO: implement this, for test now
+					// Report tanks status
+					xQueueOverwrite( tanksStatusQueue, &watertank1);
+					// Report plants status
 					plant1.health = sector[0].planthealthGet(plant1.id);
 					xQueueSendToFront(plantsHealthQueue, &plant1, ( TickType_t ) 0);
 					plant2.health = sector[1].planthealthGet(plant2.id);
@@ -366,12 +375,13 @@ void vIrrigationControlTask( void *pvParameters )
 					xQueueSendToFront(plantsHealthQueue, &plant3, ( TickType_t ) 0);
 					plant4.health = sector[2].planthealthGet(plant4.id);
 					xQueueSendToFront(plantsHealthQueue, &plant4, ( TickType_t ) 0);
+					// Report batteries status
 					battery1_status.id = battery1->getId();
 					battery1_status.percentage = battery1->getPercentage();
-					//battery1_status.status = battery1->getErrors();
-					//battery1_status.state = battery1->getState();
+					battery1_status.status = battery1->getStatus();
 					battery1_status.remaining_time_min = battery1->getRemainingTimeMinutes();
 					xQueueOverwrite( batteryStatusQueue, &battery1_status);
+					// Report sectors status
 					sector_status_requested[0] = true;
 					sector_status_requested[1] = true;
 					sector_status_requested[2] = true;
@@ -388,7 +398,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 					switch (received_commands[i].target_id){
 					case SECTOR1_ID:
-						if (watertank1_valid && battery1->isValid()){
+						if (watertank1_valid and battery1->isValid()){
 							sector[0].wateringSet(true);
 							cmd_confirmation_required[0] = true;
 						}
@@ -396,7 +406,7 @@ void vIrrigationControlTask( void *pvParameters )
 						break;
 
 					case SECTOR2_ID:
-						if (watertank1_valid && battery1->isValid()){
+						if (watertank1_valid and battery1->isValid()){
 							sector[1].wateringSet(true);
 							cmd_confirmation_required[1] = true;
 						}
@@ -404,7 +414,7 @@ void vIrrigationControlTask( void *pvParameters )
 						break;
 
 					case SECTOR3_ID:
-						if (watertank1_valid && battery1->isValid()){
+						if (watertank1_valid and battery1->isValid()){
 							sector[2].wateringSet(true);
 							cmd_confirmation_required[2] = true;
 						}
@@ -446,6 +456,7 @@ void vIrrigationControlTask( void *pvParameters )
 
 
     	for (uint8_t i=0; i<AVBL_SECTORS; ++i){
+    		if (watertank1_valid == false or battery1->isValid() == false) sector[i].wateringSet(false);
         	sector_status[i] = sector[i].update(dt_seconds);					//update avbl sectors
     		if (cmd_confirmation_required[i] == true){
     			cmd_confirmation_required[i] = handleConfirmation(sector[i]); 	//reset request flag on success
@@ -474,20 +485,20 @@ void vIrrigationControlTask( void *pvParameters )
 
 			   errorcode.reporter = target_t::Tank;
 			   errorcode.id = tank1->idGet();
-			   errorcode.code = tank1_status.state;
+			   errorcode.code = watertank1.state;
 			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
 
-			   pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), pumps_status);
-			   pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), pumps_status);
-			   pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), pumps_status);
+			   pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
+			   pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
+			   pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
 			   errorcode.reporter = target_t::Pump;
 			   errorcode.id = 255;
-			   errorcode.code = pumps_status;
+			   errorcode.code = encoded_pumps_status;
 			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
 
-			   errorcode.reporter = target_t::Power; //TODO
-			   errorcode.id = 255;
-			   errorcode.code = 0xffffffff;
+			   errorcode.reporter = target_t::Power;
+			   errorcode.id = battery1->getId();
+			   errorcode.code = battery1->getStatus();
 			   xQueueSendToFront(serviceQueue, &errorcode, ( TickType_t ) 0);
 
 			   errorcode.reporter = target_t::System; //TODO
@@ -528,21 +539,22 @@ void vStatusNotifyTask( void *pvParameters )
 void vWirelessCommTask( void *pvParameters )
 {
 	portTickType xLastWakeTime;
-	constexpr portTickType xFrequencySeconds = 0.05 * TASK_FREQ_MULTIPLIER; //<20Hz
+	constexpr portTickType xFrequencySeconds = REFRESH_RATE_SECONDS_COMMS * TASK_FREQ_MULTIPLIER; //<20Hz
 	xLastWakeTime=xTaskGetTickCount();
 
 	constexpr struct gpio_s radio1ce = {NRF24_CE_GPIO_Port, NRF24_CE_Pin};
 	constexpr struct gpio_s radio1csn = {NRF24_NSS_GPIO_Port, NRF24_NSS_Pin};
 
+	bool radio1_configured = false;
+
 	dlframe32byte_u radio1FrameRx;
 	struct cmd_s cmd;
 	struct confirmation_s confirmation;
-	bool radio1_configured = false;
-	tankstatus_s tank1_status;
+	tankstatus_s watertank;
 	uint32_t encoded_pumps_status = 0;
 	uint32_t encoded_sectors_status = 0;
-	struct plant_s plant;
-	struct battery_s battery_status;
+	struct plantstatus_s plant;
+	struct batterystatus_s battery;
 
 
 	/* Receiver address */
@@ -606,10 +618,10 @@ void vWirelessCommTask( void *pvParameters )
 				}
 			}
 
-			if (xQueueReceive( tanksStatusQueue, &tank1_status, 0 ) == pdPASS){
+			if (xQueueReceive( tanksStatusQueue, &watertank, 0 ) == pdPASS){
 
 				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
-				outbound_msg->encode(tank1_status);
+				outbound_msg->encode(watertank);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
 				/* Wait for data to be sent */
@@ -679,10 +691,10 @@ void vWirelessCommTask( void *pvParameters )
 
 			}
 
-			if (xQueueReceive( batteryStatusQueue, &battery_status, 0 ) == pdPASS){
+			if (xQueueReceive( batteryStatusQueue, &battery, 0 ) == pdPASS){
 
 				IrrigationMessage *outbound_msg = new IrrigationMessage(direction_t::IRMToRPi);
-				outbound_msg->encode(battery_status);
+				outbound_msg->encode(battery);
 				radio1->TransmitPayload(outbound_msg->uplinkframe.buffer);
 
 				/* Wait for data to be sent */

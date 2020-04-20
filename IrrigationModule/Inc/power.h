@@ -47,7 +47,7 @@ enum class batteryinterface_t: uint8_t{
 	spi
 };
 
-struct battery_s{
+struct batterystatus_s{
 	uint16_t remaining_time_min;
 	uint8_t id;
 	uint8_t percentage;

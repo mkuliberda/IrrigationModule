@@ -23,7 +23,7 @@
 
 #define NAME_LENGTH 20
 
-struct plant_s{
+struct plantstatus_s{
 	char name[NAME_LENGTH];
 	uint8_t id;
 	float health;
