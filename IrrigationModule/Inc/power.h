@@ -33,10 +33,10 @@ struct batteryerror_t{
 	uint8_t overdischarge 	: 1;
 	uint8_t overheated 		: 1;
 	uint8_t overloaded 		: 1;
-	uint8_t free1 			: 1;
-	uint8_t free2 			: 1;
-	uint8_t free3 			: 1;
-	uint8_t free4 			: 1;
+	uint8_t calc_error		: 1;
+	uint8_t iface_error		: 1;
+	uint8_t reserved1		: 1;
+	uint8_t reserved2		: 1;
 };
 
 enum class batteryinterface_t: uint8_t{
@@ -83,6 +83,7 @@ private:
 	void 												calculatePercentage(void);
 	void												determineState(const float &_dt);
 	void												calculateRemainingTimeMinutes(const float &_dt);
+	void												determineErrors(void);
 
 public:
 	Battery(const uint8_t &_id, const batterytype_t & _type, const batteryinterface_t &_interface, const uint8_t & _cell_count):

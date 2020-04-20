@@ -63,6 +63,8 @@ uint8_t Battery::getStatus(void){
 	if (this->errors.overdischarge) status.set(6);
 	if (this->errors.overloaded) status.set(5);
 	if (this->errors.overheated) status.set(4);
+	if (this->errors.calc_error) status.set(3);
+	if (this->errors.iface_error) status.set(2);
 
 	return static_cast<uint8_t>(status.to_ulong());
 }
@@ -71,17 +73,14 @@ void Battery::configureAdcCharacteristics(const float &_adc_voltage_divider_erro
 	this->adc_reference_voltage = _adc_reference_voltage;
 	this->adc_levels = _adc_levels;
 }
-
 void Battery::calculatePercentage(void){
 	if (this->voltage < (this->cell_voltage_min * this->cell_count)) this->percentage = 0;
 	else if (this->voltage > (this->cell_voltage_max * this->cell_count)) this->percentage = 100;
 	else this->percentage = (this->voltage - (this->cell_voltage_min * this->cell_count)) / ((this->cell_voltage_max * this->cell_count) - (this->cell_voltage_min * this->cell_count)) * 100.0;
 }
-
 void Battery::calculateRemainingTimeMinutes(const float &_dt){
 	//TODO
 }
-
 void Battery::determineState(const float &_dt){
 	if((this->dt_from_last_calc += _dt) > this->calc_timespan_s){
 		this->voltage > this->voltage_previous ? this->state = batterystate_t::charging : this->state = batterystate_t::discharging;
@@ -89,7 +88,21 @@ void Battery::determineState(const float &_dt){
 		this->dt_from_last_calc = 0;
 	}
 }
+void Battery::determineErrors(void){
+	if (this->voltage > (this->cell_voltage_max * this->cell_count)) this->errors.overvoltage = 1;
+	else this->errors.overvoltage = 0;
 
+	if (this->voltage < (this->cell_voltage_min * this->cell_count)) this->errors.overdischarge = 1;
+	else this->errors.overdischarge = 0;
+
+	this->errors.overloaded = 0; //TODO: Unsupported
+	this->errors.overheated = 0; //TODO: Unsupported
+	this->errors.calc_error = 0;
+	this->errors.iface_error = 0;
+	this->errors.reserved1 = 0;
+	this->errors.reserved2 = 0;
+
+}
 bool Battery::update(const float & _dt){
 	return false; //TODO:
 }
@@ -104,17 +117,22 @@ bool Battery::update(const float & _dt, uint16_t *_raw_adc_values, const uint8_t
 				this->voltage += cell_voltage;
 				this->calculatePercentage();
 				this->determineState(_dt);
+				this->determineErrors();
 			}
 		}
 		else if (this->cell_count > 1 && _adc_values_count == 1){
 			this->voltage = (_raw_adc_values[0] * this->adc_reference_voltage / this->adc_levels) * this->adc_voltage_divider_error_factor;
 			this->calculatePercentage();
 			this->determineState(_dt);
+			this->determineErrors();
 		}
-		else success = false;
-		//TODO: errors set/reset
+		else{
+			this->errors.calc_error = 1;
+			success = false;
+		}
 	}
 	else{
+		this->errors.iface_error = 1;
 		success = false;
 	}
 
