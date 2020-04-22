@@ -78,7 +78,7 @@ private:
 	float adc_reference_voltage = 3.0;
 	uint32_t adc_levels = 4095;
 	float dt_from_last_calc = 0;
-	const float calc_timespan_s = 30;
+	const float calc_timespan_s = 300;  //5min timespan
 
 	void 												calculatePercentage(void);
 	void												determineState(const float &_dt);

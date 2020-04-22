@@ -128,7 +128,7 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr uint32_t pump_breaktime_seconds = 20;
 	constexpr float battery1_capacity = 4400;
 	constexpr float battery1_cell_count = 1;
-	constexpr float battery1_volt_div_error_factor = 1.0;
+	constexpr float battery1_volt_div_error_factor = 1.74;
 	constexpr float adc_reference_voltage = 3.0;
 	constexpr uint32_t adc_voltage_levels = 4095;
 
@@ -246,31 +246,31 @@ void vIrrigationControlTask( void *pvParameters )
 					switch (i)
 					{
 					case 0:
-						xQueueReceive(adcValuesQueue, &sector1_adc_value[0], 0);
+						xQueueReceive(adcValuesQueue, &battery_adc_value[0], 0);
 						break;
 					case 1:
-						xQueueReceive(adcValuesQueue, &sector2_adc_value[0], 0);
+						xQueueReceive(adcValuesQueue, &sector1_adc_value[0], 0); //2
 						break;
 					case 2:
-						xQueueReceive(adcValuesQueue, &sector2_adc_value[1], 0);
+						xQueueReceive(adcValuesQueue, &sector2_adc_value[0], 0); //1
 						break;
 					case 3:
-						xQueueReceive(adcValuesQueue, &sector3_adc_value[0], 0);
+						xQueueReceive(adcValuesQueue, &sector2_adc_value[1], 0); //3
 						break;
 					case 4:
-						xQueueReceive(adcValuesQueue, &free_adc_value[0], 0);
+						xQueueReceive(adcValuesQueue, &sector3_adc_value[0], 0); //4
 						break;
 					case 5:
-						xQueueReceive(adcValuesQueue, &free_adc_value[1], 0);
+						xQueueReceive(adcValuesQueue, &free_adc_value[0], 0); //5
 						break;
 					case 6:
-						xQueueReceive(adcValuesQueue, &free_adc_value[2], 0);
+						xQueueReceive(adcValuesQueue, &free_adc_value[1], 0); //6
 						break;
 					case 7:
-						xQueueReceive(adcValuesQueue, &free_adc_value[3], 0);
+						xQueueReceive(adcValuesQueue, &free_adc_value[2], 0); //8
 						break;
 					case 8:
-						xQueueReceive(adcValuesQueue, &battery_adc_value[0], 0);
+						xQueueReceive(adcValuesQueue, &free_adc_value[3], 0); //7
 						break;
 					default:
 						break;

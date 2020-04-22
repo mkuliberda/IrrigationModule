@@ -91,6 +91,7 @@ void MX_ADC1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
+
     /**Configure the ADC multi-mode 
     */
   multimode.Mode = ADC_MODE_INDEPENDENT;
@@ -202,6 +203,10 @@ void MX_ADC1_Init(void)
 
 
   HAL_ADC_MspInit(&hadc1);
+
+  if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK){
+	    _Error_Handler(__FILE__, __LINE__);
+  }
 
   // -- Enables ADC DMA request
 //  if (HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC1ConvertedValues, 9) != HAL_OK)
