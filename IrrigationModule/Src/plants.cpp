@@ -31,11 +31,11 @@ const uint8_t& Plant::idGet(void){
 /*! IrrigationSector class implementation */
 /***********************************/
 
-const uint8_t& IrrigationSector:: sectorGet(void){
+const uint8_t& IrrigationSector:: getSector(void){
 	return this->id;
 }
 
-bool IrrigationSector::plantCreate(const std::string & _name, const uint8_t & _id){
+bool IrrigationSector::createPlant(const std::string & _name, const uint8_t & _id){
 
 	bool success = true;
 
@@ -55,7 +55,8 @@ bool IrrigationSector::plantCreate(const std::string & _name, const uint8_t & _i
 
 uint8_t& IrrigationSector::update(const double & _dt){
 	//get status of pump for now, later get overall sector status
-	this->status = this->irrigationController->update(_dt, this->wateringGet());
+	this->irrigationController->update(_dt, this->wateringGet()); //returns true if cmd consumed
+	this->status = this->irrigationController->getPumpStatusEncoded();
 	return this->status;
 }
 
@@ -67,22 +68,24 @@ uint8_t& IrrigationSector::update(const double & _dt, const bool & _activate_wat
 uint8_t& IrrigationSector::update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt){
 
 	for (uint8_t i=0; i<_raw_adc_values_cnt; i++){
-		this->irrigationController->vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
-		this->vPlants.at(i).moisturePercentSet(100.0 - this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
+		if (i <= this->plantsCount){
+			this->irrigationController->vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
+			this->vPlants.at(i).moisturePercentSet(100.0 - this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
+		}
 	}
 
 	//get status of pump for now, later get overall sector status
-	this->status = this->irrigationController->update(_dt, _activate_watering);
-
+	this->irrigationController->update(_dt, _activate_watering); //returns true if cmd consumed
+	this->status = this->irrigationController->getPumpStatusEncoded();
 
 	return this->status;
 }
 
-uint8_t& IrrigationSector::plantscountGet(void){
+uint8_t& IrrigationSector::getPlantsCount(void){
 	return this->plantsCount;
 }
 
-float IrrigationSector::planthealthGet(const std::string & _name){
+float IrrigationSector::getPlantHealth(const std::string & _name){
 
 	float tempHealth = -1000.0;
 
@@ -91,8 +94,7 @@ float IrrigationSector::planthealthGet(const std::string & _name){
 		for (uint8_t i = 0; i < this->plantsCount; i++)
 		{
 			if (_name.compare(this->vPlants.at(i).nameGet())){
-				tempHealth = this->vPlants.at(i).moisturePercentGet();
-				return tempHealth;
+				return this->vPlants.at(i).moisturePercentGet();
 			}
 		}
 	}
@@ -100,36 +102,66 @@ float IrrigationSector::planthealthGet(const std::string & _name){
 	return tempHealth;
 }
 
-void IrrigationSector::measurementsSet(uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt){
+void IrrigationSector::setMeasurements(uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt){
 	for (uint8_t i=0; i<_raw_adc_values_cnt; ++i){
-		this->irrigationController->vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
-		this->vPlants.at(i).moisturePercentSet(this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
+		if (i < this->plantsCount){
+			this->irrigationController->vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
+			this->vPlants.at(i).moisturePercentSet(this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
+		}
 	}
 }
 
-float IrrigationSector::planthealthGet(const uint8_t & _id){
-
-	float tempHealth = -1000.0;
+float IrrigationSector::getPlantHealth(const uint8_t & _id){
 
 	if(this->plantsCount > 0)
 	{
 		for (uint8_t i = 0; i < this->plantsCount; i++)
 		{
 			if (this->vPlants.at(i).idGet() == _id){
-				tempHealth = this->vPlants.at(i).moisturePercentGet();
-				return tempHealth;
+				return this->vPlants.at(i).moisturePercentGet();
 			}
 		}
 	}
 
-	return tempHealth;
+	return -1000;
 }
 
-uint8_t& IrrigationSector::statusGet(void){
+std::string IrrigationSector::getPlantNameByID(const uint8_t & _id){
+
+	if(this->plantsCount > 0)
+	{
+		for (uint8_t i = 0; i < this->plantsCount; ++i)
+		{
+			if (this->vPlants.at(i).idGet() == _id){
+				return this->vPlants.at(i).nameGet();
+			}
+		}
+	}
+
+	return "";
+
+}
+
+struct sectorstatus_s	IrrigationSector::getInfo(void){
+
+	struct sectorstatus_s sector_info;
+	std::string plants;
+
+	sector_info.id = this->id;
+	sector_info.state = this->status;
+	for(auto &plant : this->vPlants){
+		plants += plant.nameGet();
+		plants += ",";
+	}
+	std::strcpy (sector_info.plants, plants.c_str());
+	return sector_info;
+}
+
+uint8_t& IrrigationSector::getStatus(void){
 	return this->status;
 }
 
-pumpstate_t IrrigationSector::pumpstateGet(void){
+pumpstate_t IrrigationSector::getPumpState(void){
 	if 		(this->irrigationController->pBinPump != nullptr){
 		return this->irrigationController->pBinPump->stateGet();
 	}
@@ -141,15 +173,9 @@ pumpstate_t IrrigationSector::pumpstateGet(void){
 	}
 }
 
-/*struct pumpstatus_s& IrrigationSector::pumpstatusGet(void){
-	if 		(this->irrigationController->pBinPump != nullptr){
-		return this->irrigationController->pBinPump->statusGet();
-	}
-	else if (this->irrigationController->p8833Pump != nullptr){
-		return this->irrigationController->p8833Pump->statusGet();
-	}
-}*/
-
+uint8_t IrrigationSector::getPumpStatusEncoded(void){
+		return this->irrigationController->getPumpStatusEncoded();
+}
 
 void IrrigationSector::wateringSet(const bool & _activate_watering){
 	this->water_plants = _activate_watering;

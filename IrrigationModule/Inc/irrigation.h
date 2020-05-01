@@ -272,13 +272,15 @@ private:
 	const uint8_t						moisturesensorsLimit = 10;
 	uint8_t								moisturesensorsCount;
 	pumpcontrollermode_t				mode;
+	uint8_t								pumpEncodedStatus;
 
 public:
 
 	PumpController():
 		pumpsCount(0),
 		moisturesensorsCount(0),
-		mode(pumpcontrollermode_t::init)
+		mode(pumpcontrollermode_t::init),
+		pumpEncodedStatus(255)
 	{};
 
 	~PumpController()
@@ -291,11 +293,12 @@ public:
 	DRV8833Pump							*p8833Pump = nullptr;
 	std::vector <AnalogDMAMoistureSensor> 	vDMAMoistureSensor;
 
-	uint8_t								update(const double & _dt, const bool & _activate_watering);
+	bool								update(const double & _dt, const bool & _activate_watering);
 	bool								pumpCreate(const pumptype_t & _pumptype);
 	bool 								moisturesensorCreate(const moisturesensortype_t & _sensortype);
 	bool								modeSet(const pumpcontrollermode_t & _mode);
 	const pumpcontrollermode_t&			modeGet(void);
+	uint8_t&							getPumpStatusEncoded(void);
 
 
 };

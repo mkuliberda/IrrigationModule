@@ -709,8 +709,8 @@ bool WaterTank::checkStateOK(const double & _dt, uint32_t & errcodeBitmask){
 	else if (waterlevelPercent > 50) 	{ this->waterlevelSet(contentlevel_t::above50); errcode.reset(18); }
 	else if (waterlevelPercent > 40) 	{ this->waterlevelSet(contentlevel_t::above40); errcode.reset(18); }
 	else if (waterlevelPercent > 30) 	{ this->waterlevelSet(contentlevel_t::above30); errcode.reset(18); }
-	else if (waterlevelPercent > 20) 	this->waterlevelSet(contentlevel_t::above20);
-	else if (waterlevelPercent > 10) 	this->waterlevelSet(contentlevel_t::above10);
+	else if (waterlevelPercent > 20) 	{ this->waterlevelSet(contentlevel_t::above20); errcode.reset(18); }
+	else if (waterlevelPercent > 10) 	{ this->waterlevelSet(contentlevel_t::above10); errcode.reset(18); }
 	else if (waterlevelPercent >= 0) 	{ this->waterlevelSet(contentlevel_t::empty); isOK = false; }
 
 	errcodeBitmask = errcode.to_ulong();
@@ -800,14 +800,14 @@ uint8_t & WaterTank::idGet(void){
 /*! PumpController class implementation */
 /***********************************/
 
-uint8_t PumpController::update(const double & _dt, const bool & _activate_watering){
+bool PumpController::update(const double & _dt, const bool & _activate_watering){
 
 	bool consumed = false;
 	std::bitset<8> errcode;
 	/*******errcode**********
 	 * 00000000
 	 * ||||||||->(0) 1 if cmd not consumed
-	 * |||||||-->(1)
+	 * |||||||-->(1) 1 if active, 0 if stopped
 	 * ||||||--->(2)
 	 * |||||---->(3)
 	 * ||||----->(4)
@@ -874,7 +874,18 @@ uint8_t PumpController::update(const double & _dt, const bool & _activate_wateri
 	}
 	else errcode.set(8,true);
 
-	return static_cast<uint8_t>(errcode.to_ulong());
+	if (this->pBinPump != nullptr)
+	{
+		if (this->pBinPump->stateGet() == pumpstate_t::running) errcode.set(1,true);
+	}
+	else if (this->p8833Pump != nullptr)
+	{
+		if (this->p8833Pump->stateGet() == pumpstate_t::running or this->p8833Pump->stateGet() == pumpstate_t::reversing) errcode.set(1,true);
+	}
+
+	this->pumpEncodedStatus = static_cast<uint8_t>(errcode.to_ulong());
+
+	return consumed;
 }
 
 bool PumpController::pumpCreate(const pumptype_t & _pumptype){
@@ -976,6 +987,9 @@ const pumpcontrollermode_t&	PumpController::modeGet(void){
 	return this->mode;
 }
 
+uint8_t& PumpController::getPumpStatusEncoded(void){
+	return this->pumpEncodedStatus;
+}
 
 void pumpStateEncode(const struct pumpstatus_s & _pump, uint32_t & status) {
 
