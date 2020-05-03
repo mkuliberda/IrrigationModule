@@ -1,6 +1,14 @@
 
 #include <plants.h>
 
+struct confirmation_s{
+	uint8_t target;
+	uint8_t target_id;
+	uint8_t cmd;
+	uint8_t subcmd1;
+	uint8_t subcmd2;
+	bool consumed;
+};
 
 /***********************************/
 /*! Plants class implementation */
@@ -183,6 +191,29 @@ void IrrigationSector::wateringSet(const bool & _activate_watering){
 
 bool& IrrigationSector::wateringGet(void){
 	return this->water_plants;
+}
+
+bool IrrigationSector::handleConfirmation(void){
+
+	struct confirmation_s confirmation = {0x04, 0, 0x00, 0, 0, false};
+	bool not_confirmed = true;
+
+	if (this->wateringGet() == true and (this->getPumpState() == pumpstate_t::running or this->getPumpState() == pumpstate_t::waiting)){
+		confirmation.target_id = this->getSector();
+		confirmation.cmd = 0x10;
+		confirmation.consumed = true;
+		not_confirmed = xQueueSendToFront(confirmationsQueue, (void *)&confirmation, ( TickType_t ) 5) == pdTRUE ? false : true;
+
+	}
+	if (this->wateringGet() == false and this->getPumpState() == pumpstate_t::stopped){
+		confirmation.target_id = this->getSector();
+		confirmation.cmd = 0x11;
+		confirmation.consumed = true;
+		not_confirmed = xQueueSendToFront(confirmationsQueue, (void *)&confirmation, ( TickType_t ) 5) == pdTRUE ? false : true;
+	}
+
+	return not_confirmed;
+
 }
 
 

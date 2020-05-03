@@ -22,6 +22,8 @@
 #include <irrigation.h>
 #include <cstring>
 
+extern xQueueHandle confirmationsQueue;
+
 #define NAME_LENGTH 20
 #define PLANTS_LENGTH 20
 
@@ -108,6 +110,8 @@ public:
 	uint8_t					getPumpStatusEncoded(void);
 	void					wateringSet(const bool & _activate_watering);
 	bool&					wateringGet(void);
+	bool 					handleConfirmation(void);
+
 };
 
 #endif /* PLANTS_H_ */

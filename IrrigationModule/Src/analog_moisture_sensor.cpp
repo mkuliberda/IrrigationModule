@@ -13,7 +13,7 @@
 /***********************************/
 
 void AnalogDMAMoistureSensor::voltsUpdate(void){
-	this->moistureVolts = this->moistureRaw * 3.0f/4095.0f;
+	this->moistureVolts = this->moistureRaw * 3.3f/4095.0f;
 }
 
 void AnalogDMAMoistureSensor::percentUpdate(void){

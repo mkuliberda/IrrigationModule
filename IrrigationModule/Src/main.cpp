@@ -131,6 +131,8 @@ int main(void)
   MX_SPI2_Init();
   MX_TIM7_Init();
 
+  size_t freeheap = xPortGetFreeHeapSize();
+
   /* USER CODE BEGIN 2 */
   vSemaphoreCreateBinary(xUserButtonSemaphore);
   vSemaphoreCreateBinary(xADCReadingsReadySemaphore);
@@ -143,19 +145,21 @@ int main(void)
   extCommandsQueue = xQueueCreate(EXTCMDS_BUFFER_LENGTH, sizeof( cmd_s) );
   confirmationsQueue = xQueueCreate(CONFIRM_BUFFER_LENGTH, sizeof( confirmation_s) );
   serviceQueue = xQueueCreate(SERVICE_BUFFER_LENGTH, sizeof( servicecode_s) );
-  //singleValsQueue = xQueueCreate(SINGLEVALUES_BUFFER_LENGTH, sizeof( singlevalue_s) );
+  singleValsQueue = xQueueCreate(SINGLEVALUES_BUFFER_LENGTH, sizeof( singlevalue_s) );
   batteryStatusQueue = xQueueCreate(BATTERY_BUFFER_LENGTH, sizeof( batterystatus_s) );
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
   //MX_FREERTOS_Init();
-  xTaskCreate( vIrrigationControlTask, ( const char * ) "Irrigation Control", configMINIMAL_STACK_SIZE+512, NULL, tskIDLE_PRIORITY+5, NULL );
+  xTaskCreate( vIrrigationControlTask, ( const char * ) "Irrigation Control", configMINIMAL_STACK_SIZE+1792, NULL, tskIDLE_PRIORITY+5, NULL );
+  xTaskCreate( vWirelessCommTask, ( const char * ) "Wireless Communication", configMINIMAL_STACK_SIZE+512, NULL, tskIDLE_PRIORITY+6, NULL );
   xTaskCreate( vStatusNotifyTask, ( const char * ) "Status Notify", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL );
   xTaskCreate( vLEDFlashTask, ( const char * ) "LED", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
-  xTaskCreate( vWirelessCommTask, ( const char * ) "Wireless Communication", configMINIMAL_STACK_SIZE+256, NULL, tskIDLE_PRIORITY+6, NULL );
   xTaskCreate( vUserButtonCheckTask, ( const char * ) "User Button", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+7, NULL );
   xTaskCreate( vADCReadTask, ( const char * ) "ADC", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+4, NULL );
 
+
+  freeheap = xPortGetFreeHeapSize();
 
   /* Start scheduler */
   osKernelStart();
