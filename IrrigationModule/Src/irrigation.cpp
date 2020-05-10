@@ -398,7 +398,6 @@ bool DRV8833Pump::start(void){
 	this->status.forced = false;
 
 	if(this->isRunning() == false){
-		this->stateSet(pumpstate_t::running);
 		this->idletimeReset();
 		this->runtimeReset();
 
@@ -417,6 +416,8 @@ bool DRV8833Pump::start(void){
 		}
 	}
 
+	this->stateSet(pumpstate_t::running);
+
 	return success;
 }
 
@@ -426,7 +427,6 @@ bool DRV8833Pump::stop(void){
 	this->status.forced = false;
 
 	if(this->isRunning() == true){
-		this->stateSet(pumpstate_t::stopped);
 		this->idletimeReset();
 		this->runtimeReset();
 
@@ -444,6 +444,8 @@ bool DRV8833Pump::stop(void){
 			break;
 		}
 	}
+
+	this->stateSet(pumpstate_t::stopped);
 
 	return success;
 }
@@ -800,7 +802,7 @@ uint8_t & WaterTank::idGet(void){
 /*! PumpController class implementation */
 /***********************************/
 
-bool PumpController::update(const double & _dt, const bool & _activate_watering){
+bool PumpController::update(const double & _dt, bool & _activate_watering){
 
 	bool consumed = false;
 	std::bitset<8> errcode;
@@ -808,7 +810,7 @@ bool PumpController::update(const double & _dt, const bool & _activate_watering)
 	 * 00000000
 	 * ||||||||->(0) 1 if cmd not consumed
 	 * |||||||-->(1) 1 if active, 0 if stopped
-	 * ||||||--->(2)
+	 * ||||||--->(2) 1 if runtime timeout
 	 * |||||---->(3)
 	 * ||||----->(4)
 	 * |||------>(5) 1 if none of avbl pumps was correctly initialized/created
@@ -841,12 +843,19 @@ bool PumpController::update(const double & _dt, const bool & _activate_watering)
 				}
 				else if (this->p8833Pump != nullptr)
 				{
-					if(_activate_watering)
+					if(_activate_watering == true && this->p8833Pump->stateGet() != pumpstate_t::waiting)
 					{
 						this->p8833Pump->run(_dt, pumpcmd_t::start, consumed);
 						if(consumed == false) errcode.set(1,true);
 					}
-					else
+					else if (_activate_watering == true && this->p8833Pump->stateGet() == pumpstate_t::waiting)
+					{
+						this->p8833Pump->run(_dt, pumpcmd_t::stop, consumed);
+						if(consumed == false) errcode.set(1,true);
+						errcode.set(2,true); //runtime timeout
+						_activate_watering = false;
+					}
+					else if (_activate_watering == false)
 					{
 						this->p8833Pump->run(_dt, pumpcmd_t::stop, consumed);
 					}

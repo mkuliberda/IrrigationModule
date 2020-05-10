@@ -293,7 +293,7 @@ public:
 	DRV8833Pump							*p8833Pump = nullptr;
 	std::vector <AnalogDMAMoistureSensor> 	vDMAMoistureSensor;
 
-	bool								update(const double & _dt, const bool & _activate_watering);
+	bool								update(const double & _dt, bool & _activate_watering);
 	bool								pumpCreate(const pumptype_t & _pumptype);
 	bool 								moisturesensorCreate(const moisturesensortype_t & _sensortype);
 	bool								modeSet(const pumpcontrollermode_t & _mode);

@@ -97,8 +97,6 @@ public:
 	const uint8_t& 			getSector(void);
 	bool 					createPlant(const std::string & _name, const uint8_t & _id);
 	uint8_t& 				update(const double & _dt);
-	uint8_t& 				update(const double & _dt, const bool & _activate_watering);
-	uint8_t& 				update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt);
 	uint8_t& 				getPlantsCount(void);
 	struct sectorstatus_s	getInfo(void);
 	float 					getPlantHealth(const std::string & _name);

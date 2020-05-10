@@ -63,29 +63,8 @@ bool IrrigationSector::createPlant(const std::string & _name, const uint8_t & _i
 
 uint8_t& IrrigationSector::update(const double & _dt){
 	//get status of pump for now, later get overall sector status
-	this->irrigationController->update(_dt, this->wateringGet()); //returns true if cmd consumed
+	this->irrigationController->update(_dt, this->water_plants); //returns true if cmd consumed
 	this->status = this->irrigationController->getPumpStatusEncoded();
-	return this->status;
-}
-
-uint8_t& IrrigationSector::update(const double & _dt, const bool & _activate_watering){
-	//TODO:implement this for moisture sensors other than ADC DMA
-	return this->status;
-}
-
-uint8_t& IrrigationSector::update(const double & _dt, const bool & _activate_watering, uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt){
-
-	for (uint8_t i=0; i<_raw_adc_values_cnt; i++){
-		if (i <= this->plantsCount){
-			this->irrigationController->vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
-			this->vPlants.at(i).moisturePercentSet(100.0 - this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
-		}
-	}
-
-	//get status of pump for now, later get overall sector status
-	this->irrigationController->update(_dt, _activate_watering); //returns true if cmd consumed
-	this->status = this->irrigationController->getPumpStatusEncoded();
-
 	return this->status;
 }
 
@@ -198,14 +177,14 @@ bool IrrigationSector::handleConfirmation(void){
 	struct confirmation_s confirmation = {0x04, 0, 0x00, 0, 0, false};
 	bool not_confirmed = true;
 
-	if (this->wateringGet() == true and (this->getPumpState() == pumpstate_t::running or this->getPumpState() == pumpstate_t::waiting)){
+	if (this->water_plants == true and (this->getPumpState() == pumpstate_t::running or this->getPumpState() == pumpstate_t::waiting)){
 		confirmation.target_id = this->getSector();
 		confirmation.cmd = 0x10;
 		confirmation.consumed = true;
 		not_confirmed = xQueueSendToFront(confirmationsQueue, (void *)&confirmation, ( TickType_t ) 5) == pdTRUE ? false : true;
 
 	}
-	if (this->wateringGet() == false and this->getPumpState() == pumpstate_t::stopped){
+	if (this->water_plants == false and this->getPumpState() == pumpstate_t::stopped){
 		confirmation.target_id = this->getSector();
 		confirmation.cmd = 0x11;
 		confirmation.consumed = true;

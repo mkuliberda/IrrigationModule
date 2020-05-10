@@ -5,11 +5,6 @@
  *      Author: Mati
  */
 
-/*Pelargonie co drugi dzieñ
- * Surfinie codziennie
- * Trawa raz na 3 dni
- */
-
 #include <freeRTOSTasks.h>
 #include <irrigation.h>
 #include <utilities.h>
@@ -65,8 +60,6 @@ extern xQueueHandle serviceQueue;
 extern xQueueHandle singleValsQueue;
 
 using namespace std;
-
-//bool handleConfirmation(IrrigationSector &_sector);
 
 void vADCReadTask( void *pvParameters )
 {
@@ -689,29 +682,6 @@ void vWirelessCommTask( void *pvParameters )
 
 
 }
-
-/*bool handleConfirmation(IrrigationSector &_sector){
-
-	struct confirmation_s confirmation = {target_t::Sector, 0, command_t::None, 0, 0, false};
-	bool not_confirmed = true;
-
-	if (_sector.wateringGet() == true and (_sector.getPumpState() == pumpstate_t::running or _sector.getPumpState() == pumpstate_t::waiting)){
-		confirmation.target_id = _sector.getSector();
-		confirmation.cmd = command_t::Start;
-		confirmation.consumed = true;
-		not_confirmed = xQueueSendToFront(confirmationsQueue, &confirmation, ( TickType_t ) 0) == pdTRUE ? false : true;
-
-	}
-	if (_sector.wateringGet() == false and _sector.getPumpState() == pumpstate_t::stopped){
-		confirmation.target_id = _sector.getSector();
-		confirmation.cmd = command_t::Stop;
-		confirmation.consumed = true;
-		not_confirmed = xQueueSendToFront(confirmationsQueue, &confirmation, ( TickType_t ) 0) == pdTRUE ? false : true;
-	}
-
-	return not_confirmed;
-
-}*/
 
 
 
