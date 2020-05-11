@@ -172,6 +172,15 @@ void vIrrigationControlTask( void *pvParameters )
 	bool watertank1_valid = false;
 	IrrigationSector sector[AVBL_SECTORS] = {{SECTOR1_ID}, {SECTOR2_ID}, {SECTOR3_ID}};
 
+	WaterTank tank1(tank1_height_meters, tank1_volume_liters, WATERTANK1_ID);
+	if (tank1.waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
+		tank1.vOpticalWLSensors.at(0).init(wls_low_pos_meters, opticalwaterlevelsensor2gpio);
+	}
+
+	if (tank1.temperatureSensorCreate(temperaturesensortype_t::ds18b20) == true){
+		tank1.vTemperatureSensors.at(0).init(ds18b20_1gpio, &htim7);
+	}
+
 
 	sector[0].createPlant("ch1", PLANT1_ID);
 	sector[0].createPlant("ch5", PLANT5_ID);
@@ -202,16 +211,6 @@ void vIrrigationControlTask( void *pvParameters )
 	sector[2].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	if (sector[2].irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
 		sector[2].irrigationController->p8833Pump->init(PUMP3_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump3gpio, pump3led, pump3fault, pump3mode);
-	}
-
-
-	WaterTank tank1(tank1_height_meters, tank1_volume_liters, WATERTANK1_ID);
-	if (tank1.waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
-		tank1.vOpticalWLSensors.at(0).init(wls_low_pos_meters, opticalwaterlevelsensor2gpio);
-	}
-
-	if (tank1.temperatureSensorCreate(temperaturesensortype_t::ds18b20) == true){
-		tank1.vTemperatureSensors.at(0).init(ds18b20_1gpio, &htim7);
 	}
 
 	Battery battery1(BATTERY1_ID, batterytype_t::liion, batteryinterface_t::adc, battery1_cell_count, battery1_capacity);

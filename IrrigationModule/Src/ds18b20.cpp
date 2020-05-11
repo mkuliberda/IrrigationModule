@@ -19,20 +19,22 @@ void DS18B20::delay_us (const uint32_t & _us){
 
 bool& DS18B20::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle){
 
-	this->valid = true;
+	this->valid = false;
 	this->ptimer = _tim_baseHandle;
 	this->gpio.port = _gpio.port;
 	this->gpio.pin = _gpio.pin;
+	uint8_t retry_count = 0;
 
 	if(HAL_TIM_Base_Start(ptimer) != HAL_OK) this->valid = false;
 
-	if(this->OneWire_Reset()){
-		this->OneWire_WriteByte(ONEWIRE_CMD_READROM);
-		for(uint8_t i=0; i<8; i++) ROM[i] = this->OneWire_ReadByte();
-		if (ROM[0] != DS18B20_FAMILY_CODE) this->valid = false;
-	}
-	else{
-		this->valid = false;
+	while(this->valid == false && retry_count < 20 ){
+		if (this->OneWire_Reset()){
+			this->OneWire_WriteByte(ONEWIRE_CMD_READROM);
+			for(uint8_t i=0; i<8; i++) ROM[i] = this->OneWire_ReadByte();
+			this->valid = ROM[0] == DS18B20_FAMILY_CODE ? true : false;
+		}
+		this->delay_us(5);
+		retry_count++;
 	}
 
 	return this->valid;
