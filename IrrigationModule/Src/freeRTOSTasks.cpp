@@ -184,33 +184,33 @@ void vIrrigationControlTask( void *pvParameters )
 
 	sector[0].createPlant("ch1", PLANT1_ID);
 	sector[0].createPlant("ch5", PLANT5_ID);
-	sector[0].irrigationController->modeSet(pumpcontrollermode_t::external);
-	sector[0].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	sector[0].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector[0].irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
-		sector[0].irrigationController->p8833Pump->init(PUMP1_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump1gpio, pump1led, pump1fault, pump1mode);
+	sector[0].irrigationController.modeSet(pumpcontrollermode_t::external);
+	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector[0].irrigationController.pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector[0].irrigationController.p8833Pump->init(PUMP1_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump1gpio, pump1led, pump1fault, pump1mode);
 	}
 
 
 	sector[1].createPlant("ch2", PLANT2_ID);
 	sector[1].createPlant("ch3", PLANT3_ID);
-	sector[1].irrigationController->modeSet(pumpcontrollermode_t::external);
-	sector[1].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	sector[1].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector[1].irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
-		sector[1].irrigationController->p8833Pump->init(PUMP2_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump2gpio, pump2led, pump2fault, pump2mode);
+	sector[1].irrigationController.modeSet(pumpcontrollermode_t::external);
+	sector[1].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	sector[1].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector[1].irrigationController.pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector[1].irrigationController.p8833Pump->init(PUMP2_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump2gpio, pump2led, pump2fault, pump2mode);
 	}
 
 
 	sector[2].createPlant("ch4", PLANT4_ID);
 	sector[2].createPlant("ch6", PLANT6_ID);
 	sector[2].createPlant("ch7", PLANT7_ID);
-	sector[2].irrigationController->modeSet(pumpcontrollermode_t::external);
-	sector[2].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	sector[2].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	sector[2].irrigationController->moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector[2].irrigationController->pumpCreate(pumptype_t::drv8833_dc) == true){
-		sector[2].irrigationController->p8833Pump->init(PUMP3_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump3gpio, pump3led, pump3fault, pump3mode);
+	sector[2].irrigationController.modeSet(pumpcontrollermode_t::external);
+	sector[2].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	sector[2].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	sector[2].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector[2].irrigationController.pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector[2].irrigationController.p8833Pump->init(PUMP3_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump3gpio, pump3led, pump3fault, pump3mode);
 	}
 
 	Battery battery1(BATTERY1_ID, batterytype_t::liion, batteryinterface_t::adc, battery1_cell_count, battery1_capacity);
@@ -285,9 +285,9 @@ void vIrrigationControlTask( void *pvParameters )
 					break;
 
 				case target_t::Pump:
-				   	pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
-				    pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
-				    pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
+				   	pumpStateEncode(sector[0].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
+				    pumpStateEncode(sector[1].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
+				    pumpStateEncode(sector[2].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
 				    xQueueOverwrite( pumpsStatusQueue, &encoded_pumps_status);
 					break;
 
@@ -468,9 +468,9 @@ void vIrrigationControlTask( void *pvParameters )
 			   errorcode.code = watertank_info.state;
 			   xQueueSendToFront(serviceQueue, (void *)&errorcode, ( TickType_t ) 0);
 
-			   pumpStateEncode(sector[0].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
-			   pumpStateEncode(sector[1].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
-			   pumpStateEncode(sector[2].irrigationController->p8833Pump->statusGet(), encoded_pumps_status);
+			   pumpStateEncode(sector[0].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
+			   pumpStateEncode(sector[1].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
+			   pumpStateEncode(sector[2].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
 			   errorcode.reporter = target_t::Pump;
 			   errorcode.id = 255;
 			   errorcode.code = encoded_pumps_status;

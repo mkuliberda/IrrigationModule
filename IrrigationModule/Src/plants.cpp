@@ -63,8 +63,8 @@ bool IrrigationSector::createPlant(const std::string & _name, const uint8_t & _i
 
 uint8_t& IrrigationSector::update(const double & _dt){
 	//get status of pump for now, later get overall sector status
-	this->irrigationController->update(_dt, this->water_plants); //returns true if cmd consumed
-	this->status = this->irrigationController->getPumpStatusEncoded();
+	this->irrigationController.update(_dt, this->water_plants); //returns true if cmd consumed
+	this->status = this->irrigationController.getPumpStatusEncoded();
 	return this->status;
 }
 
@@ -92,8 +92,8 @@ float IrrigationSector::getPlantHealth(const std::string & _name){
 void IrrigationSector::setMeasurements(uint16_t *_raw_adc_values_array, const uint8_t & _raw_adc_values_cnt){
 	for (uint8_t i=0; i<_raw_adc_values_cnt; ++i){
 		if (i < this->plantsCount){
-			this->irrigationController->vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
-			this->vPlants.at(i).moisturePercentSet(this->irrigationController->vDMAMoistureSensor.at(i).percentGet());
+			this->irrigationController.vDMAMoistureSensor.at(i).rawUpdate(_raw_adc_values_array[i]);
+			this->vPlants.at(i).moisturePercentSet(this->irrigationController.vDMAMoistureSensor.at(i).percentGet());
 		}
 	}
 }
@@ -149,11 +149,11 @@ uint8_t& IrrigationSector::getStatus(void){
 }
 
 pumpstate_t IrrigationSector::getPumpState(void){
-	if 		(this->irrigationController->pBinPump != nullptr){
-		return this->irrigationController->pBinPump->stateGet();
+	if 		(this->irrigationController.pBinPump != nullptr){
+		return this->irrigationController.pBinPump->stateGet();
 	}
-	else if (this->irrigationController->p8833Pump != nullptr){
-		return this->irrigationController->p8833Pump->stateGet();
+	else if (this->irrigationController.p8833Pump != nullptr){
+		return this->irrigationController.p8833Pump->stateGet();
 	}
 	else{
 		return pumpstate_t::init;
@@ -161,7 +161,7 @@ pumpstate_t IrrigationSector::getPumpState(void){
 }
 
 uint8_t IrrigationSector::getPumpStatusEncoded(void){
-		return this->irrigationController->getPumpStatusEncoded();
+		return this->irrigationController.getPumpStatusEncoded();
 }
 
 void IrrigationSector::wateringSet(const bool & _activate_watering){

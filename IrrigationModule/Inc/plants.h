@@ -79,7 +79,7 @@ private:
 
 public:
 
-	PumpController *irrigationController;
+	PumpController irrigationController;
 
 	IrrigationSector(const uint8_t & _id):
 	id(_id),
@@ -87,11 +87,10 @@ public:
 	status(0),
 	water_plants(false)
 	{
-		irrigationController = new PumpController();
 	};
 
-	~IrrigationSector(){
-		delete irrigationController;
+	~IrrigationSector()
+	{
 	}
 
 	const uint8_t& 			getSector(void);
