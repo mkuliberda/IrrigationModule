@@ -56,6 +56,7 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
+#include "wwdg.h"
 #include "freertoss.h"
 #include "freeRTOSTasks.h"
 #include "utilities.h"
@@ -130,6 +131,7 @@ int main(void)
   MX_UART4_Init();
   MX_SPI2_Init();
   MX_TIM7_Init();
+  //MX_WWDG_Init();
 
   size_t freeheap = xPortGetFreeHeapSize();
 

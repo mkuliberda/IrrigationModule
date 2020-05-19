@@ -18,6 +18,8 @@
 #include "nrf24l01.h"
 #include "msg_definitions_irrigation.h"
 #include "power.h"
+#include "wwdg.h"
+//#include "stm32f3xx_hal_wwdg.h"
 
 
 #define PUMP1_ID 0
@@ -58,6 +60,8 @@ extern xQueueHandle confirmationsQueue;
 extern xQueueHandle sysStatusQueue;
 extern xQueueHandle serviceQueue;
 extern xQueueHandle singleValsQueue;
+
+WWDG_HandleTypeDef hwwdg;
 
 using namespace std;
 
