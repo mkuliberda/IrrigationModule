@@ -56,7 +56,7 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-#include "wwdg.h"
+#include "iwdg.h"
 #include "freertoss.h"
 #include "freeRTOSTasks.h"
 #include "utilities.h"
@@ -131,7 +131,7 @@ int main(void)
   MX_UART4_Init();
   MX_SPI2_Init();
   MX_TIM7_Init();
-  //MX_WWDG_Init();
+  MX_IWDG_Init();
 
   size_t freeheap = xPortGetFreeHeapSize();
 
@@ -159,7 +159,6 @@ int main(void)
   xTaskCreate( vLEDFlashTask, ( const char * ) "LED", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
   xTaskCreate( vUserButtonCheckTask, ( const char * ) "User Button", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+7, NULL );
   xTaskCreate( vADCReadTask, ( const char * ) "ADC", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+4, NULL );
-
 
   freeheap = xPortGetFreeHeapSize();
 
@@ -192,9 +191,10 @@ void SystemClock_Config(void)
 
     /**Initializes the CPU, AHB and APB busses clocks 
     */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = 16;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL16;

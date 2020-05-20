@@ -12,14 +12,13 @@
 #include "gpio.h"
 #include "usart.h"
 #include "tim.h"
+#include "iwdg.h"
 #include <string>
 #include "main.h"
 #include "adc.h"
 #include "nrf24l01.h"
 #include "msg_definitions_irrigation.h"
 #include "power.h"
-#include "wwdg.h"
-//#include "stm32f3xx_hal_wwdg.h"
 
 
 #define PUMP1_ID 0
@@ -61,7 +60,7 @@ extern xQueueHandle sysStatusQueue;
 extern xQueueHandle serviceQueue;
 extern xQueueHandle singleValsQueue;
 
-WWDG_HandleTypeDef hwwdg;
+IWDG_HandleTypeDef hiwdg;
 
 using namespace std;
 
@@ -221,9 +220,9 @@ void vIrrigationControlTask( void *pvParameters )
 	battery1.configureAdcCharacteristics(battery1_volt_div_error_factor, adc_reference_voltage, adc_voltage_levels);
 
 
-	size_t heap_min;
     for( ;; )
     {
+    	HAL_IWDG_Refresh(&hiwdg);
     	//TODO calculate dt_seconds based on real world period instead of a fixed one
     	rcvd_cmds_nbr = 0;
     	watertank1_valid = tank1.checkStateOK(dt_seconds, watertank_info.state);
@@ -492,8 +491,6 @@ void vIrrigationControlTask( void *pvParameters )
 
 		   }
     	}
-    	heap_min = xPortGetFreeHeapSize();
-
 
     	LEDToggle(10);
 		vTaskDelayUntil(&xLastWakeTime, xFrequencySeconds);
