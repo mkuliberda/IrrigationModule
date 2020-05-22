@@ -79,11 +79,16 @@ private:
 	uint32_t adc_levels = 4095;
 	float dt_from_last_calc = 0;
 	const float calc_timespan_s = 300;  //5min timespan
+	static const uint8_t voltage_buffer_length = 30;
+	float voltage_buffer[voltage_buffer_length];
+	uint8_t voltage_buffer_counter = 0;
+
 
 	void 												calculatePercentage(void);
 	void												determineState(const float &_dt);
 	void												calculateRemainingTimeMinutes(const float &_dt);
 	void												determineErrors(void);
+	void												updateBuffer(const float & _voltage);
 
 public:
 	Battery(const uint8_t &_id, const batterytype_t & _type, const batteryinterface_t &_interface, const uint8_t & _cell_count):

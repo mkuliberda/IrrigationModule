@@ -103,32 +103,44 @@ void Battery::determineErrors(void){
 	this->errors.reserved2 = 0;
 
 }
+
+void Battery::updateBuffer(const float & _voltage){
+	this->voltage_buffer[voltage_buffer_counter] = _voltage;
+	if (this->voltage_buffer_counter < this->voltage_buffer_length) this->voltage_buffer_counter += 1;
+	else this->voltage_buffer_counter = 0;
+}
+
 bool Battery::update(const float & _dt){
 	return false; //TODO:
 }
+
 bool Battery::update(const float & _dt, uint16_t *_raw_adc_values, const uint8_t &_adc_values_count){
 	bool success = true;
+	float temp_voltage = 0;
 
 	if (this->interface == batteryinterface_t::adc){
+		this->voltage = 0;
 		if (this->cell_count == _adc_values_count){
-			this->voltage = 0;
 			for (uint8_t i=0; i<this->cell_count; ++i){
 				float cell_voltage = (_raw_adc_values[i] * this->adc_reference_voltage / this->adc_levels) * this->adc_voltage_divider_error_factor;
-				this->voltage += cell_voltage;
-				this->calculatePercentage();
-				this->determineState(_dt);
-				this->determineErrors();
+				temp_voltage += cell_voltage;
 			}
 		}
 		else if (this->cell_count > 1 && _adc_values_count == 1){
-			this->voltage = (_raw_adc_values[0] * this->adc_reference_voltage / this->adc_levels) * this->adc_voltage_divider_error_factor;
-			this->calculatePercentage();
-			this->determineState(_dt);
-			this->determineErrors();
+			temp_voltage = (_raw_adc_values[0] * this->adc_reference_voltage / this->adc_levels) * this->adc_voltage_divider_error_factor;
 		}
 		else{
 			this->errors.calc_error = 1;
 			success = false;
+		}
+
+		if (success){
+			this->updateBuffer(temp_voltage);
+			for(uint8_t i=0; i<this->voltage_buffer_length; ++i) this->voltage += this->voltage_buffer[i];
+			this->voltage = this->voltage/this->voltage_buffer_length;
+			this->calculatePercentage();
+			this->determineState(_dt);
+			this->determineErrors();
 		}
 	}
 	else{
