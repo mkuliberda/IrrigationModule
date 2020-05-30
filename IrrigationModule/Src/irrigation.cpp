@@ -297,7 +297,7 @@ bool DRV8833Pump::init(const uint8_t & _id, const uint32_t & _idletimeRequiredSe
 	return success;
 }
 
-void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed){
+void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed, bool & fault){
 
 	if (this->isFault() == true) this->stateSet(pumpstate_t::fault);
 
@@ -373,6 +373,7 @@ void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_con
 		break;
 
 	case pumpstate_t::fault:
+		fault = true;
 		this->idletimeIncrease(_dt);
 		this->stop(); //TODO: or forcestop?
 		if (_cmd == pumpcmd_t::stop) cmd_consumed = true;
@@ -384,6 +385,7 @@ void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_con
 		this->stop(); //TODO: or forcestop?
 		if (_cmd == pumpcmd_t::stop) cmd_consumed = true;
 		else cmd_consumed = false;
+		break;
 
 	default:
 		break;
@@ -805,13 +807,14 @@ uint8_t & WaterTank::idGet(void){
 bool PumpController::update(const double & _dt, bool & _activate_watering){
 
 	bool consumed = false;
+	bool fault = false;
 	std::bitset<8> errcode;
 	/*******errcode**********
 	 * 00000000
 	 * ||||||||->(0) 1 if cmd not consumed
 	 * |||||||-->(1) 1 if active, 0 if stopped
 	 * ||||||--->(2) 1 if runtime timeout
-	 * |||||---->(3)
+	 * |||||---->(3) 1 if fault occurred at least once
 	 * ||||----->(4)
 	 * |||------>(5) 1 if none of avbl pumps was correctly initialized/created
 	 * ||------->(6) 1 if controller is in wrong or not avbl mode
@@ -824,7 +827,7 @@ bool PumpController::update(const double & _dt, bool & _activate_watering){
 		{
 
 		case pumpcontrollermode_t::init:
-			errcode.set(7,true);
+			errcode.set(6,true);
 			break;
 
 		case pumpcontrollermode_t::external:
@@ -833,64 +836,69 @@ bool PumpController::update(const double & _dt, bool & _activate_watering){
 					if(_activate_watering)
 					{
 						this->pBinPump->run(_dt, pumpcmd_t::start, consumed);
-						if(consumed == false) errcode.set(1,true);
+						if(consumed == false) errcode.set(0,true);
 					}
 					else
 					{
 						this->pBinPump->run(_dt, pumpcmd_t::stop, consumed);
-						if(consumed == false) errcode.set(1,true);
+						if(consumed == false) errcode.set(0,true);
 					}
 				}
 				else if (this->p8833Pump != nullptr)
 				{
 					if(_activate_watering == true && this->p8833Pump->stateGet() != pumpstate_t::waiting)
 					{
-						this->p8833Pump->run(_dt, pumpcmd_t::start, consumed);
-						if(consumed == false) errcode.set(1,true);
+						this->p8833Pump->run(_dt, pumpcmd_t::start, consumed, fault);
+						if(consumed == false) errcode.set(0,true);
 					}
 					else if (_activate_watering == true && this->p8833Pump->stateGet() == pumpstate_t::waiting)
 					{
-						this->p8833Pump->run(_dt, pumpcmd_t::stop, consumed);
-						if(consumed == false) errcode.set(1,true);
+						this->p8833Pump->run(_dt, pumpcmd_t::stop, consumed, fault);
+						if(consumed == false) errcode.set(0,true);
 						errcode.set(2,true); //runtime timeout
 						_activate_watering = false;
 					}
 					else if (_activate_watering == false)
 					{
-						this->p8833Pump->run(_dt, pumpcmd_t::stop, consumed);
+						this->p8833Pump->run(_dt, pumpcmd_t::stop, consumed, fault);
 					}
 				}
-				else errcode.set(6,true);
+				else errcode.set(5,true);
 
 			break;
 
 		case pumpcontrollermode_t::manual:
-			errcode.set(7,true);
+			errcode.set(6,true);
 			break;
 
 		case pumpcontrollermode_t::automatic:
-			errcode.set(7,true);
+			errcode.set(6,true);
 			break;
 
 		case pumpcontrollermode_t::sleep:
-			errcode.set(7,true);
+			errcode.set(6,true);
 			break;
 
 		default:
-			errcode.set(7,true);
+			errcode.set(6,true);
 			break;
 		}
-	}
-	else errcode.set(8,true);
 
-	if (this->pBinPump != nullptr)
-	{
-		if (this->pBinPump->stateGet() == pumpstate_t::running) errcode.set(1,true);
+		if (this->pBinPump != nullptr)
+		{
+			if (this->pBinPump->stateGet() == pumpstate_t::running) errcode.set(1,true);
+		}
+		else if (this->p8833Pump != nullptr)
+		{
+			if (this->p8833Pump->stateGet() == pumpstate_t::running or this->p8833Pump->stateGet() == pumpstate_t::reversing) errcode.set(1,true);
+		}
+
+		if (fault == true){
+			if (++this->pumpFaultOccurenceCnt > 0) errcode.set(3, true);
+		}
+
 	}
-	else if (this->p8833Pump != nullptr)
-	{
-		if (this->p8833Pump->stateGet() == pumpstate_t::running or this->p8833Pump->stateGet() == pumpstate_t::reversing) errcode.set(1,true);
-	}
+	else errcode.set(7,true);
 
 	this->pumpEncodedStatus = static_cast<uint8_t>(errcode.to_ulong());
 

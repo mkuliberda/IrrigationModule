@@ -57,12 +57,12 @@
 #include "usart.h"
 #include "gpio.h"
 #include "iwdg.h"
-#include "freertoss.h"
 #include "freeRTOSTasks.h"
 #include "utilities.h"
 #include "plants.h"
 #include "msg_definitions_irrigation.h"
 #include "power.h"
+
 
 /* USER CODE BEGIN Includes */
 SemaphoreHandle_t xUserButtonSemaphore = NULL;
@@ -90,7 +90,7 @@ xQueueHandle singleValsQueue;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void MX_FREERTOS_Init(void);
+
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -152,7 +152,6 @@ int main(void)
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
-  //MX_FREERTOS_Init();
   xTaskCreate( vIrrigationControlTask, ( const char * ) "Irrigation Control", configMINIMAL_STACK_SIZE+1792, NULL, tskIDLE_PRIORITY+5, NULL );
   xTaskCreate( vWirelessCommTask, ( const char * ) "Wireless Communication", configMINIMAL_STACK_SIZE+512, NULL, tskIDLE_PRIORITY+6, NULL );
   xTaskCreate( vStatusNotifyTask, ( const char * ) "Status Notify", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, NULL );

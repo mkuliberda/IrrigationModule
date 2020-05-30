@@ -98,14 +98,14 @@ public:
 	Pump():
 		runtimeSeconds(0.0),
 		idletimeSeconds(0.0),
-		runtimeLimitSeconds(0),
-		idletimeRequiredSeconds(0)
+		runtimeLimitSeconds(0.0),
+		idletimeRequiredSeconds(0.0)
 	{};
 
 	virtual ~Pump(){};
 
-	bool init();
-	virtual void 				run(const double & _dt);
+	bool 						init();
+	void 						run(const double & _dt);
 	virtual void 				stateSet(const pumpstate_t & _st) = 0;
 	pumpstate_t& 				stateGet(void);
 	virtual bool 				isRunning(void);
@@ -139,7 +139,8 @@ public:
 		this->type=pumptype_t::binary;
 	};
 
-	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, const struct gpio_s & _pinout, const struct gpio_s & _led);
+	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
+									const struct gpio_s & _pinout, const struct gpio_s & _led);
 	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
 	void 						stateSet(const pumpstate_t & _st) override;
 	void 						forcestart(void);
@@ -172,12 +173,12 @@ public:
 	};
 
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-								const std::array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led_pinout, \
-								const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout);
+									const std::array<struct gpio_s, 4> & _pinout, const struct gpio_s & _led_pinout, \
+									const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout);
 	bool 						init(const uint8_t & _id, const uint32_t & _idletimeRequiredSeconds, const uint32_t & _runtimeLimitSeconds, \
-								const std::array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led_pinout, \
-								const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout);
-	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed);
+									const std::array<struct gpio_s, 2> & _pinout, const struct gpio_s & _led_pinout, \
+									const struct gpio_s & _fault_pinout, const struct gpio_s & _mode_pinout);
+	void 						run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_consumed, bool & fault);
 	void 						stateSet(const pumpstate_t & _st) override;
 	bool 						forcestart(void);
 	bool 						forcereverse(void);
@@ -273,6 +274,7 @@ private:
 	uint8_t								moisturesensorsCount;
 	pumpcontrollermode_t				mode;
 	uint8_t								pumpEncodedStatus;
+	uint32_t							pumpFaultOccurenceCnt;
 
 public:
 
@@ -280,7 +282,8 @@ public:
 		pumpsCount(0),
 		moisturesensorsCount(0),
 		mode(pumpcontrollermode_t::init),
-		pumpEncodedStatus(255)
+		pumpEncodedStatus(255),
+		pumpFaultOccurenceCnt(0)
 	{};
 
 	~PumpController()

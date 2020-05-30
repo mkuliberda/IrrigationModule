@@ -120,7 +120,7 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr double tank1_height_meters = 0.55;
 	constexpr double tank1_volume_liters = 50.0;
 	constexpr float wls_low_pos_meters = 0.0825;
-	constexpr uint32_t pump_maxruntime_seconds = 60;
+	constexpr uint32_t pump_maxruntime_seconds = 300;
 	constexpr uint32_t pump_breaktime_seconds = 20;
 	constexpr float battery1_capacity = 4400;
 	constexpr float battery1_cell_count = 1;
