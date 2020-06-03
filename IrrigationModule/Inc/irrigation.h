@@ -98,8 +98,8 @@ public:
 	Pump():
 		runtimeSeconds(0.0),
 		idletimeSeconds(0.0),
-		runtimeLimitSeconds(0.0),
-		idletimeRequiredSeconds(0.0)
+		runtimeLimitSeconds(0),
+		idletimeRequiredSeconds(0)
 	{};
 
 	virtual ~Pump(){};
@@ -153,9 +153,9 @@ class DRV8833Pump: public Pump{
 private:
 
 	std::array<struct gpio_s, 4> 	aIN;							///< in1, in2, in3, in4
-	struct gpio_s 				led;
-	struct gpio_s 				fault;
-	struct gpio_s 				mode;
+	struct gpio_s 					led;
+	struct gpio_s 					fault;
+	struct gpio_s 					mode;
 
 protected:
 

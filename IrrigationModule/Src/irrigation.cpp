@@ -312,7 +312,6 @@ void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_con
 		this->idletimeIncrease(_dt);
 		if(this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
 			if (_cmd == pumpcmd_t::start) this->start();
-			else if (_cmd == pumpcmd_t::reverse) this->reverse();
 			else this->stop();
 			cmd_consumed = true;
 		}
@@ -329,14 +328,8 @@ void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_con
 				this->stateSet(pumpstate_t::waiting);
 			}
 		}
-		else if (_cmd == pumpcmd_t::reverse){
-			if (this->idletimeGetSeconds() > this->idletimeRequiredSeconds){
-				this->reverse();
-				cmd_consumed = true;
-			}
-			else if (this->idletimeGetSeconds() <= this->idletimeRequiredSeconds){
-				this->stateSet(pumpstate_t::waiting);
-			}
+		else{
+			cmd_consumed = true;
 		}
 		break;
 
@@ -349,7 +342,7 @@ void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_con
 			this->stop();
 			cmd_consumed = true;
 		}
-		else if (_cmd == pumpcmd_t::reverse){
+		else{
 			this->stop();
 			cmd_consumed = false;
 		}
@@ -358,18 +351,14 @@ void DRV8833Pump::run(const double & _dt, const pumpcmd_t & _cmd, bool & cmd_con
 
 	case pumpstate_t::reversing:
 		this->runtimeIncrease(_dt);
-		if(_cmd == pumpcmd_t::reverse){
-			cmd_consumed = true;
-		}
-		else if(_cmd == pumpcmd_t::stop){
-			this->stop();
+		if(_cmd==pumpcmd_t::start){
+			this->start();
 			cmd_consumed = true;
 		}
 		else {
-			this->stop();
-			cmd_consumed = false;
+			cmd_consumed = true;
 		}
-		if(this->runtimeGetSeconds() > this->runtimeLimitSeconds && this->status.forced == false) this->stop(); //TODO: how to handle force.... commands?
+		if(this->runtimeGetSeconds() > 30.0 && this->status.forced == false) this->stop(); //TODO: how to handle force.... commands?
 		break;
 
 	case pumpstate_t::fault:
@@ -457,7 +446,7 @@ bool DRV8833Pump::reverse(void){
 	bool success = false;
 	this->status.forced = false;
 
-	this->stateSet(pumpstate_t::reversing);
+
 	this->idletimeReset();
 	this->runtimeReset();
 
@@ -474,6 +463,9 @@ bool DRV8833Pump::reverse(void){
 	default:
 		break;
 	}
+
+	this->stateSet(pumpstate_t::reversing);
+
 
 	return success;
 
@@ -890,7 +882,7 @@ bool PumpController::update(const double & _dt, bool & _activate_watering){
 		}
 		else if (this->p8833Pump != nullptr)
 		{
-			if (this->p8833Pump->stateGet() == pumpstate_t::running or this->p8833Pump->stateGet() == pumpstate_t::reversing) errcode.set(1,true);
+			if (this->p8833Pump->stateGet() == pumpstate_t::running) errcode.set(1,true);
 		}
 
 		if (fault == true){

@@ -37,7 +37,7 @@
 #define SECTOR3_ID 2
 #define SECTOR4_ID 3
 #define WATERTANK1_ID 0
-#define AVBL_SECTORS 3
+#define AVBL_SECTORS 1
 #define BATTERY1_ID 0
 
 #define REFRESH_RATE_SECONDS_ANALOG 2
@@ -120,8 +120,8 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr double tank1_height_meters = 0.55;
 	constexpr double tank1_volume_liters = 50.0;
 	constexpr float wls_low_pos_meters = 0.0825;
-	constexpr uint32_t pump_maxruntime_seconds = 300;
-	constexpr uint32_t pump_breaktime_seconds = 20;
+	constexpr uint32_t pump_maxruntime_seconds = 900;
+	constexpr uint32_t pump_breaktime_seconds = 60;
 	constexpr float battery1_capacity = 4400;
 	constexpr float battery1_cell_count = 1;
 	constexpr float battery1_volt_div_error_factor = 1.52378;
@@ -164,16 +164,16 @@ void vIrrigationControlTask( void *pvParameters )
 	double dt_seconds = xFrequencySeconds/1000.0f;
 
 	uint32_t encoded_pumps_status = 0; //8 bits per pump
-	uint8_t sector_status[MAX_ENTITIES];
-	bool sector_status_requested[MAX_ENTITIES];
-	bool cmd_confirmation_required[MAX_ENTITIES];
+	uint8_t sector_status[MAX_ENTITIES] = {0, 0, 0, 0};
+	bool sector_status_requested[MAX_ENTITIES] =  {false, false, false, false};
+	bool cmd_confirmation_required[MAX_ENTITIES] = {false, false, false, false};
 	uint16_t sector1_adc_value[2] = {1,5};
 	uint16_t sector2_adc_value[2] = {2,3};
 	uint16_t sector3_adc_value[3] = {4,6,7};
 	uint16_t free_adc_value[1] = {8};
 	uint16_t battery_adc_value[1] = {9};
 	bool watertank1_valid = false;
-	IrrigationSector sector[AVBL_SECTORS] = {{SECTOR1_ID}, {SECTOR2_ID}, {SECTOR3_ID}};
+	IrrigationSector sector[AVBL_SECTORS] = {{SECTOR1_ID}};
 
 	WaterTank tank1(tank1_height_meters, tank1_volume_liters, WATERTANK1_ID);
 	if (tank1.waterlevelSensorCreate(waterlevelsensortype_t::optical) == true){
@@ -185,7 +185,7 @@ void vIrrigationControlTask( void *pvParameters )
 	}
 
 
-	sector[0].createPlant("ch1", PLANT1_ID);
+	/*sector[0].createPlant("ch1", PLANT1_ID);
 	sector[0].createPlant("ch5", PLANT5_ID);
 	sector[0].irrigationController.modeSet(pumpcontrollermode_t::external);
 	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
@@ -202,18 +202,18 @@ void vIrrigationControlTask( void *pvParameters )
 	sector[1].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	if (sector[1].irrigationController.pumpCreate(pumptype_t::drv8833_dc) == true){
 		sector[1].irrigationController.p8833Pump->init(PUMP2_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump2gpio, pump2led, pump2fault, pump2mode);
-	}
+	}*/
 
 
-	sector[2].createPlant("ch4", PLANT4_ID);
-	sector[2].createPlant("ch6", PLANT6_ID);
-	sector[2].createPlant("ch7", PLANT7_ID);
-	sector[2].irrigationController.modeSet(pumpcontrollermode_t::external);
-	sector[2].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	sector[2].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	sector[2].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
-	if (sector[2].irrigationController.pumpCreate(pumptype_t::drv8833_dc) == true){
-		sector[2].irrigationController.p8833Pump->init(PUMP3_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump3gpio, pump3led, pump3fault, pump3mode);
+	sector[0].createPlant("ch4", PLANT4_ID);
+	sector[0].createPlant("ch6", PLANT6_ID);
+	sector[0].createPlant("ch7", PLANT7_ID);
+	sector[0].irrigationController.modeSet(pumpcontrollermode_t::external);
+	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
+	if (sector[0].irrigationController.pumpCreate(pumptype_t::drv8833_dc) == true){
+		sector[0].irrigationController.p8833Pump->init(PUMP3_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump3gpio, pump3led, pump3fault, pump3mode);
 	}
 
 	Battery battery1(BATTERY1_ID, batterytype_t::liion, batteryinterface_t::adc, battery1_cell_count, battery1_capacity);
@@ -265,9 +265,9 @@ void vIrrigationControlTask( void *pvParameters )
 						break;
 					}
 				}
-				sector[0].setMeasurements(sector1_adc_value, 2);
-				sector[1].setMeasurements(sector2_adc_value, 2);
-				sector[2].setMeasurements(sector3_adc_value, 3);
+				//sector[0].setMeasurements(sector1_adc_value, 2);
+				//sector[1].setMeasurements(sector2_adc_value, 2);
+				sector[0].setMeasurements(sector3_adc_value, 3);
 				battery1.update(REFRESH_RATE_SECONDS_ANALOG, battery_adc_value, 1);
 		   }
     	}
@@ -288,10 +288,6 @@ void vIrrigationControlTask( void *pvParameters )
 					break;
 
 				case target_t::Pump:
-				   	pumpStateEncode(sector[0].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
-				    pumpStateEncode(sector[1].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
-				    pumpStateEncode(sector[2].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
-				    xQueueOverwrite( pumpsStatusQueue, &encoded_pumps_status);
 					break;
 
 				case target_t::Plant:
@@ -335,13 +331,13 @@ void vIrrigationControlTask( void *pvParameters )
 					if		(received_commands[i].target_id == sector[0].getSector()){
 						sector_status_requested[0] = true;
 					}
-					else if	(received_commands[i].target_id == sector[1].getSector()){
+					/*else if	(received_commands[i].target_id == sector[1].getSector()){
 						sector_status_requested[1] = true;
 					}
 					else if	(received_commands[i].target_id == sector[2].getSector()){
 						sector_status_requested[2] = true;
 					}
-					/*else if	(received_commands[i].target_id == sector[3].getSector()){
+					else if	(received_commands[i].target_id == sector[3].getSector()){
 						sector_status_requested[3] = true;
 					}*/
 					else if	(received_commands[i].target_id == 255){
@@ -398,19 +394,27 @@ void vIrrigationControlTask( void *pvParameters )
 						break;
 
 					case SECTOR2_ID:
-						if (watertank1_valid and battery1.isValid()){
+						/*if (watertank1_valid and battery1.isValid()){
 							sector[1].wateringSet(true);
 							cmd_confirmation_required[1] = true;
 						}
-						else sector[1].wateringSet(false);
+						else sector[1].wateringSet(false);*/
 						break;
 
 					case SECTOR3_ID:
-						if (watertank1_valid and battery1.isValid()){
+						/*if (watertank1_valid and battery1.isValid()){
 							sector[2].wateringSet(true);
 							cmd_confirmation_required[2] = true;
 						}
-						else sector[2].wateringSet(false);
+						else sector[2].wateringSet(false);*/
+						break;
+
+					case SECTOR4_ID:
+						/*if (watertank1_valid and battery1.isValid()){
+							sector[3].wateringSet(true);
+							cmd_confirmation_required[3] = true;
+						}
+						else sector[3].wateringSet(false);*/
 						break;
 
 					default:
@@ -427,13 +431,18 @@ void vIrrigationControlTask( void *pvParameters )
 						break;
 
 					case SECTOR2_ID:
-						sector[1].wateringSet(false);
-						cmd_confirmation_required[1] = true;
+						/*sector[1].wateringSet(false);
+						cmd_confirmation_required[1] = true;*/
 						break;
 
 					case SECTOR3_ID:
-						sector[2].wateringSet(false);
-						cmd_confirmation_required[2] = true;
+						/*sector[0].wateringSet(false);
+						cmd_confirmation_required[2] = true;*/
+						break;
+
+					case SECTOR4_ID:
+						/*sector[3].wateringSet(false);
+						cmd_confirmation_required[3] = true;*/
 						break;
 
 					default:
@@ -471,9 +480,6 @@ void vIrrigationControlTask( void *pvParameters )
 			   errorcode.code = watertank_info.state;
 			   xQueueSendToFront(serviceQueue, (void *)&errorcode, ( TickType_t ) 0);
 
-			   pumpStateEncode(sector[0].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
-			   pumpStateEncode(sector[1].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
-			   pumpStateEncode(sector[2].irrigationController.p8833Pump->statusGet(), encoded_pumps_status);
 			   errorcode.reporter = target_t::Pump;
 			   errorcode.id = 255;
 			   errorcode.code = encoded_pumps_status;
@@ -560,11 +566,11 @@ void vWirelessCommTask( void *pvParameters )
 
 	NRF24L01 radio1;
 
-	/* Initialize NRF24L01+ on channel 15 and 32bytes of payload */
-	/* By default 2Mbps data rate and -6dBm output power */
+	/* Initialize NRF24L01+ on channel 1 and 32bytes of payload */
+	/* By default 250kbps data rate and -12dBm output power */
 	/* NRF24L01 goes to RX mode by default */
-	radio1.Init(&hspi2,radio1ce, radio1csn);
-	while(radio1.Config(PAYLOAD_SIZE, 15, NRF24L01_OutputPower_0dBm, NRF24L01_DataRate_1M) == false){
+	radio1.Init(&hspi2, radio1ce, radio1csn);
+	while(radio1.Config(PAYLOAD_SIZE, 1, NRF24L01_OutputPower_M12dBm, NRF24L01_DataRate_250k) == false){
 		vTaskDelay(500);
 	}
 	radio1_configured = true;
@@ -590,6 +596,7 @@ void vWirelessCommTask( void *pvParameters )
 
 			/* If data is ready on NRF24L01+ */
 			while (radio1.DataReady()) {
+				//radio1_fail_counter = 0.0;
 				/* Get data from NRF24L01+ */
 				dlframe32byte_u radio1FrameRx;
 				radio1.GetPayload(radio1FrameRx.buffer);
@@ -601,6 +608,18 @@ void vWirelessCommTask( void *pvParameters )
 						xQueueSendToFront(extCommandsQueue, (void *)&cmd, ( TickType_t ) 1);
 					}
 				}
+			}
+
+			while(xQueueReceive( sectorsStatusQueue, &sector_info, 1 )){
+
+				outbound_msg.encode(sector_info);
+				radio1.TransmitPayload(outbound_msg.uplinkframe->buffer);
+
+				/* Wait for data to be sent */
+				do {
+					/* Wait till sending */
+					transmissionStatus = radio1.GetTransmissionStatus();
+				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
 			}
 
 			if (xQueueReceive( tanksStatusQueue, &watertank, 1 ) == pdPASS){
@@ -630,18 +649,6 @@ void vWirelessCommTask( void *pvParameters )
 			while(xQueueReceive( plantsHealthQueue, &plant_info, 1 )){
 
 				outbound_msg.encode(plant_info);
-				radio1.TransmitPayload(outbound_msg.uplinkframe->buffer);
-
-				/* Wait for data to be sent */
-				do {
-					/* Wait till sending */
-					transmissionStatus = radio1.GetTransmissionStatus();
-				} while (transmissionStatus == NRF24L01_Transmit_Status_Sending);
-			}
-
-			while(xQueueReceive( sectorsStatusQueue, &sector_info, 1 )){
-
-				outbound_msg.encode(sector_info);
 				radio1.TransmitPayload(outbound_msg.uplinkframe->buffer);
 
 				/* Wait for data to be sent */
