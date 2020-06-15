@@ -120,7 +120,7 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr double tank1_height_meters = 0.55;
 	constexpr double tank1_volume_liters = 50.0;
 	constexpr float wls_low_pos_meters = 0.0825;
-	constexpr uint32_t pump_maxruntime_seconds = 900;
+	constexpr uint32_t pump_maxruntime_seconds = 1800;
 	constexpr uint32_t pump_breaktime_seconds = 60;
 	constexpr float battery1_capacity = 4400;
 	constexpr float battery1_cell_count = 1;
@@ -128,12 +128,12 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr float adc_reference_voltage = 3.3;
 	constexpr uint32_t adc_voltage_levels = 4095;
 
-	constexpr struct gpio_s pump1gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN1_Pin};
+	/*constexpr struct gpio_s pump1gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN1_Pin};
 	constexpr struct gpio_s pump1gpio_in2 = {DRV8833PUMPS_GPIO_Port, PUMP1_IN2_Pin};
 	constexpr array<struct gpio_s, 2> pump1gpio = {pump1gpio_in1, pump1gpio_in2};
 	constexpr struct gpio_s pump1led  = {PUMP1LD_GPIO_Port, PUMP1LD_Pin};
 	constexpr struct gpio_s pump1fault  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_ULT_Pin};
-	constexpr struct gpio_s pump1mode  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_EEP_Pin};
+	constexpr struct gpio_s pump1mode  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_EEP_Pin};*/
 
 	constexpr struct gpio_s pump2gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP2_IN1_Pin};
 	constexpr struct gpio_s pump2gpio_in2 = {DRV8833PUMPS_GPIO_Port, PUMP2_IN2_Pin};
@@ -142,12 +142,12 @@ void vIrrigationControlTask( void *pvParameters )
 	constexpr struct gpio_s pump2fault  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_ULT_Pin};
 	constexpr struct gpio_s pump2mode  = {DRV8833PUMPS_GPIO_Port, DRV8833_1_EEP_Pin};
 
-	constexpr struct gpio_s pump3gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP3_IN1_Pin};
+	/*constexpr struct gpio_s pump3gpio_in1 = {DRV8833PUMPS_GPIO_Port, PUMP3_IN1_Pin};
 	constexpr struct gpio_s pump3gpio_in2 = {DRV8833PUMPS_GPIO_Port, PUMP3_IN2_Pin};
 	constexpr array<struct gpio_s, 2> pump3gpio = {pump3gpio_in1, pump3gpio_in2};
 	constexpr struct gpio_s pump3led  = {PUMP3LD_GPIO_Port, PUMP3LD_Pin};
 	constexpr struct gpio_s pump3fault  = {DRV8833PUMPS_GPIO_Port, DRV8833_2_ULT_Pin};
-	constexpr struct gpio_s pump3mode  = {DRV8833PUMPS_GPIO_Port, DRV8833_2_EEP_Pin};
+	constexpr struct gpio_s pump3mode  = {DRV8833PUMPS_GPIO_Port, DRV8833_2_EEP_Pin};*/
 
 	constexpr struct gpio_s ds18b20_1gpio = {DS18B20_1_GPIO_Port, DS18B20_1_Pin};
 	constexpr struct gpio_s opticalwaterlevelsensor2gpio = {T1_WATER_LVL_L_GPIO_Port, T1_WATER_LVL_L_Pin};
@@ -167,10 +167,8 @@ void vIrrigationControlTask( void *pvParameters )
 	uint8_t sector_status[MAX_ENTITIES] = {0, 0, 0, 0};
 	bool sector_status_requested[MAX_ENTITIES] =  {false, false, false, false};
 	bool cmd_confirmation_required[MAX_ENTITIES] = {false, false, false, false};
-	uint16_t sector1_adc_value[2] = {1,5};
-	uint16_t sector2_adc_value[2] = {2,3};
-	uint16_t sector3_adc_value[3] = {4,6,7};
-	uint16_t free_adc_value[1] = {8};
+	uint16_t sector1_adc_value[3] = {1,2,3};
+	uint16_t free_adc_value[5] = {4,5,6,7,8};
 	uint16_t battery_adc_value[1] = {9};
 	bool watertank1_valid = false;
 	IrrigationSector sector[AVBL_SECTORS] = {{SECTOR1_ID}};
@@ -205,15 +203,15 @@ void vIrrigationControlTask( void *pvParameters )
 	}*/
 
 
-	sector[0].createPlant("ch4", PLANT4_ID);
-	sector[0].createPlant("ch6", PLANT6_ID);
-	sector[0].createPlant("ch7", PLANT7_ID);
+	sector[0].createPlant("ch1", PLANT1_ID);
+	sector[0].createPlant("ch2", PLANT2_ID);
+	sector[0].createPlant("ch3", PLANT3_ID);
 	sector[0].irrigationController.modeSet(pumpcontrollermode_t::external);
 	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	sector[0].irrigationController.moisturesensorCreate(moisturesensortype_t::capacitive_noshield);
 	if (sector[0].irrigationController.pumpCreate(pumptype_t::drv8833_dc) == true){
-		sector[0].irrigationController.p8833Pump->init(PUMP3_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump3gpio, pump3led, pump3fault, pump3mode);
+		sector[0].irrigationController.p8833Pump->init(PUMP2_ID, pump_breaktime_seconds, pump_maxruntime_seconds, pump2gpio, pump2led, pump2fault, pump2mode);
 	}
 
 	Battery battery1(BATTERY1_ID, batterytype_t::liion, batteryinterface_t::adc, battery1_cell_count, battery1_capacity);
@@ -241,25 +239,25 @@ void vIrrigationControlTask( void *pvParameters )
 						xQueueReceive(adcValuesQueue, &sector1_adc_value[0], 0); //2
 						break;
 					case 2:
-						xQueueReceive(adcValuesQueue, &sector2_adc_value[0], 0); //1
+						xQueueReceive(adcValuesQueue, &sector1_adc_value[1], 0); //1
 						break;
 					case 3:
-						xQueueReceive(adcValuesQueue, &sector2_adc_value[1], 0); //3
+						xQueueReceive(adcValuesQueue, &sector1_adc_value[2], 0); //3
 						break;
 					case 4:
-						xQueueReceive(adcValuesQueue, &sector3_adc_value[0], 0); //4
+						xQueueReceive(adcValuesQueue, &free_adc_value[3], 0); //4
 						break;
 					case 5:
-						xQueueReceive(adcValuesQueue, &sector1_adc_value[1], 0); //5
+						xQueueReceive(adcValuesQueue, &free_adc_value[4], 0); //5
 						break;
 					case 6:
-						xQueueReceive(adcValuesQueue, &sector3_adc_value[1], 0); //6
+						xQueueReceive(adcValuesQueue, &free_adc_value[0], 0); //6
 						break;
 					case 7:
-						xQueueReceive(adcValuesQueue, &sector3_adc_value[2], 0); //8
+						xQueueReceive(adcValuesQueue, &free_adc_value[2], 0); //8
 						break;
 					case 8:
-						xQueueReceive(adcValuesQueue, &free_adc_value[0], 0); //7
+						xQueueReceive(adcValuesQueue, &free_adc_value[1], 0); //7
 						break;
 					default:
 						break;
@@ -267,7 +265,7 @@ void vIrrigationControlTask( void *pvParameters )
 				}
 				//sector[0].setMeasurements(sector1_adc_value, 2);
 				//sector[1].setMeasurements(sector2_adc_value, 2);
-				sector[0].setMeasurements(sector3_adc_value, 3);
+				sector[0].setMeasurements(sector1_adc_value, 3);
 				battery1.update(REFRESH_RATE_SECONDS_ANALOG, battery_adc_value, 1);
 		   }
     	}
